@@ -83,10 +83,10 @@ api.post('product', async (c) => {
             db.productDailyPrice.create({ data: toSaveFirstDailyPrice }),
         ])
         return c.json({
-            data: {
-                product,
-                dailyPrice
-            }
+            data: await productFillData({
+                ...product,
+                dailyPrices: [dailyPrice]
+            })
         })
     } catch (e: any) {
         console.log(e.message)
