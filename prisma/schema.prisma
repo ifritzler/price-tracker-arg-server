@@ -1,0 +1,35 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Product {
+  id          String              @id @default(auto()) @map("_id") @db.ObjectId
+  productId   String              @unique
+  title       String
+  supermarket String
+  url         String
+  imageUrl    String
+  category    String
+  dailyPrices ProductDailyPrice[]
+}
+
+model ProductDailyPrice {
+  id           String  @id @default(auto()) @map("_id") @db.ObjectId
+  productId    String
+  product      Product @relation(fields: [productId], references: [productId])
+  hasPromotion Boolean
+  price Float
+  promoPrice Float
+  date DateTime @default(now())
+}
