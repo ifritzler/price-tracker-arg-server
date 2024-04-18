@@ -1,4 +1,5 @@
 import htmlParser from 'node-html-parser';
+import { getOnlyDateWithoutHours } from './date';
 
 const fetchProductHtml = async (productLink: string) => {
     if (!productLink) {
@@ -16,6 +17,14 @@ const extractPriceCarrefour = (priceContainer: any) => {
     const priceDecimals = priceContainer.querySelector('.valtech-carrefourar-product-price-0-x-currencyFraction')?.innerText;
     return parseFloat(priceWithoutDecimals?.concat('.', priceDecimals ?? ''));
 };
+
+const isAvailable = (parsed: any) => {
+    const priceContainer = parsed.querySelector('div.vtex-flex-layout-0-x-flexCol.vtex-flex-layout-0-x-flexCol--product-view-prices-container')
+    //priceContainer has two childs?
+    const childPrices = {child1: priceContainer?.childNodes[0].childNodes.length, child2: priceContainer?.childNodes[1].childNodes.length}
+    if(childPrices.child1 === 0 && childPrices.child2 === 0) return false;
+    return true;
+}
 
 const extractPromoPriceCarrefour = (parsed: any) => {
     // const sellingPriceContainer = parsed.querySelector('.vtex-flex-layout-0-x-flexColChild.vtex-flex-layout-0-x-flexColChild--product-view-prices-container.pb0');
@@ -35,7 +44,14 @@ export const getProductDataCarrefour = async (productLink: string) => {
     try {
         const html = await fetchProductHtml(productLink);
         const parsed = htmlParser.parse(html);
-    
+        const available = isAvailable(parsed);
+
+        if(!available) return {
+            pid: productLink,
+            available: false
+        }
+        
+
         const title = parsed.querySelector('.vtex-store-components-3-x-productBrand')?.innerText ?? '';
         const imageElement = parsed.querySelector('.vtex-store-components-3-x-productImageTag.vtex-store-components-3-x-productImageTag--product-view-images-selector.vtex-store-components-3-x-productImageTag--main.vtex-store-components-3-x-productImageTag--product-view-images-selector--main');
         const imageSrc = imageElement?.getAttribute('src') ?? '';
@@ -53,9 +69,10 @@ export const getProductDataCarrefour = async (productLink: string) => {
             realPrice,
             promoPrice,
             imageUrl: imageSrc,
-            date: new Date().toLocaleDateString(),
+            date: getOnlyDateWithoutHours(),
             hasPromotion,
             url: productLink ?? '',
+            available: true
         };
     }catch(e: any) {
         console.log(e.message)

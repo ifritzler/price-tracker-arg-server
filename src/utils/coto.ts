@@ -1,4 +1,5 @@
 import htmlParser from 'node-html-parser';
+import { getOnlyDateWithoutHours } from './date';
 
 const fetchProductHtml = async (productLink: string) => {
     if (!productLink) {
@@ -15,6 +16,11 @@ const extractPriceCoto = (priceContainer: any) => {
     return parseFloat(integerClean?.concat('.', priceDecimals ?? ''));
 };
 
+const isAvailable = (html: string) => {
+    const isAvailable = !html.toLowerCase().includes('no disponible')
+    return isAvailable;
+}
+
 const extractPromoPriceCoto = (parsed: any) => {
     const promoPrice = parsed.innerText;
     const integer = promoPrice.split('.')[0].replace('$', '');
@@ -24,6 +30,12 @@ const extractPromoPriceCoto = (parsed: any) => {
 
 export const getProductDataCoto = async (productLink: string) => {
     const html = await fetchProductHtml(productLink);
+    const available = isAvailable(html);
+    if (!available) return {
+        pid: productLink,
+        available: false
+    }
+    
     const parsed = htmlParser.parse(html);
 
     const title = parsed.querySelector('.product_page')?.innerText ?? '';
@@ -43,9 +55,10 @@ export const getProductDataCoto = async (productLink: string) => {
         realPrice,
         promoPrice,
         imageUrl: imageSrc,
-        date: new Date().toLocaleDateString(),
+        date: getOnlyDateWithoutHours(),
         hasPromotion,
         url: productLink ?? '',
+        available: true
     };
 };
 

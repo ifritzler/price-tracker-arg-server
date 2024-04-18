@@ -11,6 +11,7 @@ export async function productFillData(product: Product & { dailyPrices: ProductD
         variationDay: product.dailyPrices.length > 1 ? ((product.dailyPrices[product.dailyPrices.length - 1].price - product.dailyPrices[product.dailyPrices.length - 2].price) / product.dailyPrices[product.dailyPrices.length - 2].price) * 100 : 0,
         // difference % between actual price and promo price
         variationPromo: product.dailyPrices[product.dailyPrices.length - 1].hasPromotion ? ((product.dailyPrices[product.dailyPrices.length - 1].promoPrice - product.dailyPrices[product.dailyPrices.length - 1].price) / product.dailyPrices[product.dailyPrices.length - 1].price) * 100 : 0,
+        available: product.available
     }
     return productFilled
 }

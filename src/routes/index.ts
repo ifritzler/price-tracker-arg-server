@@ -7,6 +7,7 @@ import { db } from "../database/prisma";
 import { productFillData } from "../utils/productFillData";
 import { getProductDataCarrefour } from '../utils/carrefour';
 import { getProductDataCoto } from "../utils/coto";
+import { getOnlyDateWithoutHours, getActualHourBuenosAires } from "../utils/date";
 
 const api = new Hono({
     router: new SmartRouter({
@@ -20,10 +21,9 @@ api.use('*', cors({ origin: ['http://localhost:3000', 'https://localhost:3000'] 
 // Actualizar fluctuaciones diarias de productos
 api.post('products/update', async (c) => {
     try {
-        const currentTime = new Date();
-        const allowedTime = new Date(currentTime);
-        allowedTime.setHours(8, 15, 0, 0); // Establecer la hora permitida a las 8:15 AM
-
+        const currentDayTimeWithoutHours = getOnlyDateWithoutHours()
+        const allowedTime = new Date().setHours(8, 15, 0, 0);
+        const currentTime = getActualHourBuenosAires().getTime();
         if (currentTime < allowedTime) {
             c.status(403);
             return c.json({ error: 'Forbidden: Update can only be performed after 8:15 AM' });
@@ -36,18 +36,11 @@ api.post('products/update', async (c) => {
             },
         });
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Establecer la hora a 00:00:00
-
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-
         const productsToUpdate = lastDaylyPrices.filter(daylyPrice => {
             const lastDaylyPriceDate = new Date(daylyPrice._max.date as Date);
-            lastDaylyPriceDate.setHours(0, 0, 0, 0); // Establecer la hora a 00:00:00
-            return lastDaylyPriceDate < yesterday;
+            return lastDaylyPriceDate < currentDayTimeWithoutHours;
         });
-        
+
         if (productsToUpdate.length === 0) {
             c.status(409);
             return c.json({ error: 'No products to update' });
@@ -56,7 +49,6 @@ api.post('products/update', async (c) => {
         const updates = await Promise.all(productsToUpdate.map(async product => {
             const supermarket = product.productId.includes('carrefour') ? 'carrefour' : 'coto';
             const url = product.productId;
-        
             try {
                 if (supermarket === 'carrefour') {
                     return await getProductDataCarrefour(url);
@@ -68,14 +60,34 @@ api.post('products/update', async (c) => {
                 return null;
             }
         }));
+        console.log({updates})
+        // update in all products avaiability
+        await Promise.all(updates.map(async product => {
+            const productId = product?.pid;
+            const available = product?.available;
+            await db.product.update({
+                where: {
+                    productId: productId
+                },
+                data: {
+                    available: available
+                }
+            });
+        }))
+
+        const updatesAvailable = updates.filter(update => update?.available);
+        if(!updatesAvailable.length) {
+            c.status(409);
+            return c.json({ error: 'No products to update' });
+        }
 
         await db.productDailyPrice.createMany({
-            data: updates.filter(update => update !== null).map(update => ({
+            data: updatesAvailable.filter(update => update !== null).map(update => ({
                 productId: update?.pid as string,
                 hasPromotion: Boolean(update?.hasPromotion),
                 price: update?.realPrice as number,
                 promoPrice: update?.promoPrice as number,
-                date: new Date()
+                date: update?.date
             }))
         });
 
@@ -85,7 +97,7 @@ api.post('products/update', async (c) => {
         c.status(500);
         return c.json({ error: 'Internal server error' });
     }
-});
+})
 
 
 // Obtener todos los productos
@@ -107,25 +119,27 @@ api.get('products', async (c) => {
     }
 });
 
+
 // Buscar un solo producto
-api.post('product/search', async (c) => {
+api.get('products/:id', async (c) => {
+    console.log(c.req.param('id'))
     try {
-        const { pid } = await c.req.json();
-        if (!pid) {
+        const { id } = c.req.param();
+        if (!id) {
             c.status(400);
             return c.json({ error: 'Product ID is required' });
         }
 
         const product = await db.product.findFirstOrThrow({
             where: {
-                productId: pid
+                id: id
             },
             include: {
                 dailyPrices: true
             }
         });
 
-        return c.json({ data: await productFillData(product) });
+        return c.json({ data: product });
     } catch (e) {
         console.error('Error al buscar un producto:', e);
         c.status(404);
@@ -155,6 +169,7 @@ api.post('product', async (c) => {
                     hasPromotion: hasPromotion === 'on' ? true : false,
                     price: parseFloat(realPrice),
                     promoPrice: parseFloat(promoPrice),
+                    date: getOnlyDateWithoutHours()
                 }
             }),
         ]);
