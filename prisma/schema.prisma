@@ -10,7 +10,8 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextIndex"]
 }
 
 model Product {
@@ -22,7 +23,9 @@ model Product {
   imageUrl    String
   category    String
   dailyPrices ProductDailyPrice[]
-  available   Boolean @default(true)
+  available   Boolean             @default(true)
+
+  @@fulltext([title, supermarket, category])
 }
 
 model ProductDailyPrice {
@@ -33,4 +36,6 @@ model ProductDailyPrice {
   price        Float
   promoPrice   Float
   date         DateTime @default(now())
+
+  @@index([productId])
 }

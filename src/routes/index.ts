@@ -60,7 +60,6 @@ api.post('products/update', async (c) => {
                 return null;
             }
         }));
-        console.log({updates})
         // update in all products avaiability
         await Promise.all(updates.map(async product => {
             const productId = product?.pid;
@@ -106,6 +105,9 @@ api.get('products', async (c) => {
         const products = await db.product.findMany({
             include: {
                 dailyPrices: true
+            },
+            orderBy: {
+                id: 'desc'
             }
         });
 
