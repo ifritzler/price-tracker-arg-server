@@ -5,6 +5,8 @@ import { SmartRouter } from "hono/router/smart-router";
 import { TrieRouter } from "hono/router/trie-router";
 import { db } from "../database/prisma";
 import { productFillData } from "../utils/productFillData";
+import { getProductDataCarrefour } from '../utils/carrefour';
+import { getProductDataCoto } from "../utils/coto";
 
 const api = new Hono({
     router: new SmartRouter({
@@ -13,6 +15,98 @@ const api = new Hono({
 })
 api.use('*', cors({ origin: ['http://localhost:3000', 'https://localhost:3000'], }))
 
+
+// Update ProductDayly fluctuations
+api.post('products/update', async (c) => {
+    // Find the last daylyPrice for all products and only filter each which the last day of update is was yesterday or before
+    const lastDaylyPrices = await db.productDailyPrice.groupBy({
+        by: ['productId'],
+        _max: {
+            date: true
+        },
+    })
+    
+    // [
+    //     {
+    //       "_max": {
+    //         "date": "2024-04-17T17:41:57.220Z"
+    //       },
+    //       "productId": "https://www.cotodigital3.com.ar/sitios/cdigi/producto/-scones-sconcito-9-de-oro-bsa-200-grm/_/A-00089952-00089952-200"
+    //     },
+    //     {
+    //       "_max": {
+    //         "date": "2024-04-17T17:38:27.388Z"
+    //       },
+    //       "productId": "https://www.cotodigital3.com.ar/sitios/cdigi/producto/-bizcochos-grasa-9-de-oro-paq-200-grm/_/A-00004606-00004606-200"
+    //     },
+    //     {
+    //       "_max": {
+    //         "date": "2024-04-17T13:57:14.002Z"
+    //       },
+    //       "productId": "https://www.carrefour.com.ar/fideos-spaghettini-barilla-n3-500-g/p"
+    //     },]
+
+    // example: if today is 18 and the last product update was 17 or before, we need to keep the productId for update now
+    const productsToUpdate = lastDaylyPrices.filter(daylyPrice => {
+        const lastDaylyPriceDate = new Date(daylyPrice._max.date as Date)
+        const today = new Date()
+        today.setDate(today.getDate() - 1)
+        return lastDaylyPriceDate < today
+    })
+
+    const promises = productsToUpdate.map(async product => {
+        const supermarket = product.productId.includes('carrefour') ? 'carrefour' : 'coto';
+        const url = product.productId;
+    
+        if (supermarket === 'carrefour') {
+            try {
+                const productData = await getProductDataCarrefour(url);
+                return productData;
+            } catch (e) {
+                // Manejo de errores
+                console.error('Error en getProductDataCarrefour:', e);
+                return null;
+            }
+        }
+    
+        if (supermarket === 'coto') {
+            try {
+                const productData = await getProductDataCoto(url);
+                return productData;
+            } catch (e) {
+                // Manejo de errores
+                console.error('Error en getProductDataCoto:', e);
+                return null;
+            }
+        }
+    
+        return null;
+    });
+
+    const updates = await Promise.all(promises)
+    
+    try {
+        await db.productDailyPrice.createMany({
+            data: [
+                ...updates.map(update => {
+                    return {
+                        productId: update?.pid as string,
+                        hasPromotion: Boolean(update?.hasPromotion),
+                        price: update?.realPrice as number,
+                        promoPrice: update?.promoPrice as number,
+                        date: new Date()
+                    }
+                })
+            ]
+        })
+        return c.json({ data: productsToUpdate })
+    }catch(e: any){
+        c.status(500)
+        return c.json({
+            error: e.message
+        })
+    }
+})
 
 // Get all products
 api.get('products', async (c) => {
