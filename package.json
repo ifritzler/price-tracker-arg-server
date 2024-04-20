@@ -5,11 +5,14 @@
   "dependencies": {
     "@hono/node-server": "^1.10.0",
     "@prisma/client": "^5.12.1",
+    "fast-xml-parser": "^4.3.6",
     "hono": "^4.2.3",
-    "node-html-parser": "^6.1.13"
+    "node-html-parser": "^6.1.13",
+    "selenium-webdriver": "^4.19.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
+    "@types/selenium-webdriver": "^4.1.22",
     "prisma": "^5.12.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.1",

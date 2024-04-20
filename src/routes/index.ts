@@ -15,6 +15,7 @@ const api = new Hono({
     })
 });
 
+api.use(logger())
 // Middleware para manejar CORS
 api.use('*', cors({ origin: ['http://localhost:3000', 'https://localhost:3000'] }));
 
@@ -46,8 +47,16 @@ api.post('products/update', async (c) => {
             return c.json({ error: 'No products to update' });
         }
 
-        const updates = await Promise.all(productsToUpdate.map(async product => {
+        // Batch of 5
+        const batches = Math.ceil(productsToUpdate.length / 10);
+        for (let i = 0; i < batches; i++) {
+            console.log(`Batch ${i + 1} of ${batches} - ${Math.floor((i + 1) / batches * 100)}%`);
+            // Porcentage of finished
+            const batch = productsToUpdate.slice(i * 10, (i + 1) * 10);
+
+            const updates = await Promise.all(batch.map(async product => {
             const supermarket = product.productId.includes('carrefour') ? 'carrefour' : 'coto';
+                const productId = product.productId;
             const url = product.productId;
             try {
                 if (supermarket === 'carrefour') {
@@ -56,12 +65,14 @@ api.post('products/update', async (c) => {
                     return await getProductDataCoto(url);
                 }
             } catch (e) {
-                console.error(`Error en getProductData (${supermarket}):`, e);
+                    console.error(`Error en getProductData (${productId}):`, e);
                 return null;
             }
         }));
+            
         // update in all products avaiability
         await Promise.all(updates.map(async product => {
+                if(!product) return
             const productId = product?.pid;
             const available = product?.available;
             await db.product.update({
@@ -73,9 +84,8 @@ api.post('products/update', async (c) => {
                 }
             });
         }))
-
         const updatesAvailable = updates.filter(update => update?.available);
-        if(!updatesAvailable.length) {
+            if (!updatesAvailable.length) {
             c.status(409);
             return c.json({ error: 'No products to update' });
         }
@@ -89,6 +99,7 @@ api.post('products/update', async (c) => {
                 date: update?.date
             }))
         });
+        }
 
         return c.json({ data: productsToUpdate });
     } catch (e) {
@@ -100,20 +111,46 @@ api.post('products/update', async (c) => {
 
 
 // Obtener todos los productos
-api.get('products', async (c) => {
+api.get('/products', async (c) => {
+
     try {
+        console.log(c.req.query())
+        const { page = '1' } = c.req.query(); // Obtener el número de página de la consulta, por defecto es la página 1
+        const pageSize = 16; // Establecer el tamaño de la página
+
+        const totalCount = await db.product.count(); // Obtener el total de productos
+
+        const totalPages = Math.ceil(totalCount / pageSize); // Calcular el total de páginas
+
+        const currentPage = parseInt(page); // Convertir el número de página a entero
+        const startIndex = (currentPage - 1) * pageSize; // Calcular el índice de inicio
+        const endIndex = Math.min(currentPage * pageSize, totalCount); // Calcular el índice de fin
+
+        // Obtener los productos para la página actual con paginación
         const products = await db.product.findMany({
             include: {
                 dailyPrices: true
             },
             orderBy: {
                 id: 'desc'
-            }
+            },
+            skip: startIndex, // Saltar los productos anteriores a la página actual
+            take: pageSize // Obtener solo los productos de la página actual
         });
 
         const filledProducts = await Promise.all(products.map(async product => await productFillData(product)));
 
-        return c.json({ data: filledProducts });
+        // Devolver los datos de la página actual junto con la información de paginación
+        return c.json({
+            data: filledProducts,
+            meta: {
+                totalCount,
+                totalPages,
+                currentPage,
+                startIndex,
+                endIndex
+            }
+        });
     } catch (e) {
         console.error('Error al obtener productos:', e);
         c.status(500);
@@ -163,6 +200,7 @@ api.post('product', async (c) => {
                     url: productUrl,
                     imageUrl,
                     category,
+                    available: true
                 }
             }),
             db.productDailyPrice.create({

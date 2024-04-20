@@ -18,6 +18,10 @@ const extractPriceCarrefour = (priceContainer: any) => {
     return parseFloat(priceWithoutDecimals?.concat('.', priceDecimals ?? ''));
 };
 
+const extractCategory = (parsed: any) => {
+    return parsed.querySelector('span.vtex-breadcrumb-1-x-arrow.vtex-breadcrumb-1-x-arrow--breadcrumb-products.vtex-breadcrumb-1-x-arrow--1.vtex-breadcrumb-1-x-arrow--breadcrumb-products--1.ph2.c-muted-2')?.childNodes[1].innerText;
+}
+
 const isAvailable = (parsed: any) => {
     const priceContainer = parsed.querySelector('div.vtex-flex-layout-0-x-flexCol.vtex-flex-layout-0-x-flexCol--product-view-prices-container')
     //priceContainer has two childs?
@@ -51,7 +55,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
             available: false
         }
         
-
+        const category = extractCategory(parsed);
         const title = parsed.querySelector('.vtex-store-components-3-x-productBrand')?.innerText ?? '';
         const imageElement = parsed.querySelector('.vtex-store-components-3-x-productImageTag.vtex-store-components-3-x-productImageTag--product-view-images-selector.vtex-store-components-3-x-productImageTag--main.vtex-store-components-3-x-productImageTag--product-view-images-selector--main');
         const imageSrc = imageElement?.getAttribute('src') ?? '';
@@ -66,6 +70,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
         return {
             pid: productLink,
             title,
+            category,
             realPrice,
             promoPrice,
             imageUrl: imageSrc,
@@ -76,7 +81,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
         };
     }catch(e: any) {
         console.log(e.message)
-        throw new Error('Error inesperado. Revise que la url del producto a revisar este bien.')
+        return null
     }
 };
 
