@@ -1,17 +1,14 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-
-import api from './routes'
+import { logger } from 'hono/logger'
+import api from './routes/api'
 import crawler from './routes/crawler'
 
 const app = new Hono()
 
-app.get('/health', (c) => {
-  return c.json({
-    success: true
-  })
-})
+app.use('*', logger())
+api.use('*', cors({ origin: ['http://localhost:3000', 'https://localhost:3000'] }));
 
 app.route('/api', api)
 app.route('/crawler', crawler)

@@ -50,7 +50,6 @@ export const getProductDataCoto = async (productLink: string) => {
     const promoPrice = hasPromotion ? extractPromoPriceCoto(parsed.querySelector('span.price_discount') || parsed.querySelector('span.price_discount_gde'))  : realPrice;
 
     return {
-        pid: productLink,
         title,
         realPrice,
         promoPrice,

@@ -51,7 +51,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
         const available = isAvailable(parsed);
 
         if(!available) return {
-            pid: productLink,
+            url: productLink,
             available: false
         }
         
@@ -68,7 +68,6 @@ export const getProductDataCarrefour = async (productLink: string) => {
         const realPrice = hasPromotion ? extractPriceCarrefour(priceContainer?.childNodes[1]) : extractPriceCarrefour(priceContainer?.childNodes[0]);
         const promoPrice = !hasPromotion ? realPrice : extractPromoPriceCarrefour(priceContainer?.childNodes[0]);
         return {
-            pid: productLink,
             title,
             category,
             realPrice,

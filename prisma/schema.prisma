@@ -5,37 +5,52 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 datasource db {
-  provider = "mongodb"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["fullTextIndex"]
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+model Category {
+  id       Int       @id() @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Supermarket {
+  id       Int       @id() @default(autoincrement())
+  name     String    @unique
+  products Product[]
 }
 
 model Product {
-  id          String              @id @default(auto()) @map("_id") @db.ObjectId
-  productId   String              @unique
-  title       String
-  supermarket String
-  url         String
-  imageUrl    String
-  category    String
-  dailyPrices ProductDailyPrice[]
-  available   Boolean             @default(true)
+  id            Int                 @id() @default(autoincrement())
+  title         String
+  url           String              @unique
+  imageUrl      String
+  category      Category            @relation(fields: [categoryId], references: [id])
+  categoryId    Int
+  supermarket   Supermarket         @relation(fields: [supermarketId], references: [id])
+  supermarketId Int
+  dailyPrices   ProductDailyPrice[]
+  available     Boolean             @default(true)
 
-  @@fulltext([title, supermarket, category])
+  @@index([categoryId], name: "category_id_index")
+  @@index([supermarketId], name: "supermarket_id_index")
 }
 
 model ProductDailyPrice {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  productId    String
-  product      Product  @relation(fields: [productId], references: [productId])
+  id           Int      @id() @default(autoincrement())
+  productId    Int
+  product      Product  @relation(fields: [productId], references: [id])
   hasPromotion Boolean
   price        Float
   promoPrice   Float
-  date         DateTime @default(now())
+  date         DateTime
 
-  @@index([productId])
+  @@unique([productId, date], name: "unique_product_date_index")
+  @@index([productId], name: "product_id_index")
 }

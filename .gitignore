@@ -1,3 +1,6 @@
 node_modules
 
 .env
+links-carrefour.json
+links-coto.json
+/prisma/dev.db

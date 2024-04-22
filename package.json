@@ -4,6 +4,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.10.0",
+    "@libsql/client": "^0.6.0",
+    "@prisma/adapter-libsql": "^5.12.1",
     "@prisma/client": "^5.12.1",
     "fast-xml-parser": "^4.3.6",
     "hono": "^4.2.3",
