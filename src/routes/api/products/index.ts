@@ -6,9 +6,8 @@ import { getOnlyDateWithoutHours } from "../../../utils/date";
 const productsRouter = new Hono()
 
 // Obtener todos los productos
-productsRouter.get('/', async (c) => {
+productsRouter.get('', async (c) => {
     try {
-        console.log(c.req.query())
         const { page = '1' } = c.req.query(); // Obtener el número de página de la consulta, por defecto es la página 1
         const pageSize = 16; // Establecer el tamaño de la página
         const totalCount = await db.product.count(); // Obtener el total de productos
@@ -18,19 +17,27 @@ productsRouter.get('/', async (c) => {
         const endIndex = Math.min(currentPage * pageSize, totalCount); // Calcular el índice de fin
         // Obtener los productos para la página actual con paginación
         const products = await db.product.findMany({
+            where: {
+                available: true
+            },
             include: {
-                dailyPrices: true,
+                dailyPrices: {
+                    orderBy: {
+                        date: 'desc'
+                    },
+                    take: 1
+                },
                 supermarket: true
             },
             orderBy: {
-                id: 'desc'
+                id: 'asc'
             },
             skip: startIndex, // Saltar los productos anteriores a la página actual
             take: pageSize // Obtener solo los productos de la página actual
         });
-        const filledProducts = await Promise.all(products.map(async product => await productFillData(product)))
+
         return c.json({
-            data: filledProducts, meta: {
+            data: products, meta: {
                 totalCount,
                 totalPages,
                 currentPage,
@@ -45,12 +52,41 @@ productsRouter.get('/', async (c) => {
     }
 });
 
+productsRouter.get('/discounts', async (c) => {
+    const products = await db.product.findMany({
+        where: {
+            dailyPrices: {
+                some: {
+                    diffPercentage: {
+                        lt: 0.0
+                    }
+                }
+            }
+        },
+        include: {
+            dailyPrices: {
+                orderBy: {
+                    date: 'desc'
+                },
+                take: 1
+            },
+            category: true,
+            supermarket: true
+        }
+    })
+    return c.json({
+        success: true,
+        data: products
+    })
+})
+
 productsRouter.post('/', async (c) => {
     try {
         const { title, supermercado, productUrl, imageUrl, category, hasPromotion, realPrice, promoPrice } = await c.req.json();
-        if(!title || !supermercado || !productUrl || !imageUrl || !category || !hasPromotion || !realPrice || !promoPrice) throw new Error('Faltan datos')
-        
-            const supermarket = await db.supermarket.findFirst({
+
+        if (!title || !supermercado || !productUrl || !imageUrl || !category || !realPrice || !promoPrice) throw new Error('Faltan datos')
+
+        const supermarket = await db.supermarket.findFirst({
             where: {
                 name: supermercado
             }
@@ -62,8 +98,8 @@ productsRouter.post('/', async (c) => {
         })
         if (!supermarket) throw new Error('Supermercado no encontrado')
         if (!cat) throw new Error('Categoria no encontrada')
-        
-        const [product, dailyPrice] = await db.$transaction(async (tsx) => {
+
+        const product = await db.$transaction(async (tsx) => {
             const product = await tsx.product.create({
                 data: {
                     title,
@@ -71,26 +107,32 @@ productsRouter.post('/', async (c) => {
                     url: productUrl,
                     imageUrl,
                     categoryId: cat.id,
+                },
+                include: {
+                    supermarket: true,
+                    category: true,
+                    dailyPrices: true
                 }
             })
+
             const dailyPrice = await tsx.productDailyPrice.create({
                 data: {
                     productId: product.id,
                     hasPromotion: hasPromotion === 'on' ? true : false,
                     price: parseFloat(realPrice),
                     promoPrice: parseFloat(promoPrice),
-                    date: getOnlyDateWithoutHours()
+                    date: getOnlyDateWithoutHours(),
+                    diffPercentage: 0.0
                 }
             })
-            return [product, dailyPrice]
+            return {
+                ...product,
+                dailyPrices: [dailyPrice]
+            }
         });
 
         return c.json({
-            data: await productFillData({
-                ...product,
-                supermarket,
-                dailyPrices: [dailyPrice]
-            })
+            data: product
         });
     } catch (e) {
         console.error('Error al guardar un producto:', e);
@@ -107,8 +149,12 @@ productsRouter.get('/:id', async (c) => {
             c.status(400);
             return c.json({ error: 'Product ID is required' });
         }
-        const product = await db.product.findFirst({ where: { id: idn }, include: { dailyPrices: true } });
-        if(!product) {
+        const product = await db.product.findFirst({
+            where: { id: idn }, include: {
+                dailyPrices: true,
+            }
+        });
+        if (!product) {
             c.status(404);
             return c.json({ error: 'Product not found' });
         }

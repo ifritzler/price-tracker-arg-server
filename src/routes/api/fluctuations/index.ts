@@ -21,7 +21,7 @@ fluctuationsRouter.post('/update', async (c) => {
                     orderBy: {
                         date: 'desc'
                     },
-                    take: 1
+                    take: 2
                 },
             },
             where: {
@@ -48,7 +48,8 @@ fluctuationsRouter.post('/update', async (c) => {
         const batches = Math.ceil(productsToUpdate.length / batchSize);
         for (let i = 0; i < batches; i++) {
             const batch = productsToUpdate.slice(i * batchSize, (i + 1) * batchSize);
-
+            // Show porcentage of finished
+            console.info(`Products updated: ${Math.round((i + 1) / batches * 100)}%`);
             // Actualiza los productos en paralelo
             await Promise.all(batch.map(async product => {
                 const supermarket = product.url.includes('carrefour') ? 'carrefour' : 'coto';
@@ -69,6 +70,8 @@ fluctuationsRouter.post('/update', async (c) => {
                             where: { id: productId },
                             data: { available: response.available }
                         });
+                        const diff = response.realPrice! - product.dailyPrices[0].price
+                        const diffPercentage = diff / product.dailyPrices[0].price * 100;
 
                         // Crea una nueva fluctuación de precio
                         await db.productDailyPrice.create({
@@ -77,7 +80,8 @@ fluctuationsRouter.post('/update', async (c) => {
                                 hasPromotion: Boolean(response.hasPromotion),
                                 price: response.realPrice as number,
                                 promoPrice: response.promoPrice as number,
-                                date: response.date as Date
+                                date: response.date as Date,
+                                diffPercentage: diffPercentage || 0.0
                             }
                         });
                     }

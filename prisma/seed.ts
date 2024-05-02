@@ -112,8 +112,8 @@ async function main() {
             name: 'Indumentaria',
         }
     })
-    console.log({ frutasYVerduras, carnesYPescados, lacteosYProductosFrescos, panaderia, congelados, desayunoYMerenda })
-    console.log({ bebidas, almacen, mundoBebe, bazarYTextil, electroYTecnologia, limpieza, perfumeria, mascotas, indumentaria })
+    console.info({ frutasYVerduras, carnesYPescados, lacteosYProductosFrescos, panaderia, congelados, desayunoYMerenda })
+    console.info({ bebidas, almacen, mundoBebe, bazarYTextil, electroYTecnologia, limpieza, perfumeria, mascotas, indumentaria })
     
     // supermecados, coto y carrefour
     const coto = await prisma.supermarket.upsert({
@@ -132,7 +132,7 @@ async function main() {
         },
     })
 
-    console.log({ coto, carrefour })
+    console.info({ coto, carrefour })
 }
 main()
     .then(async () => {

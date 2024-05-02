@@ -16,7 +16,7 @@ export async function saveDataToFile(filename: string, data: Record<string, any>
 
         // Escribir los datos actualizados en el archivo
         await fs.writeFile(filename, JSON.stringify(existingData, null, 2));
-        console.log(`Dato guardado en el archivo ${filename}`);
+        console.info(`Dato guardado en el archivo ${filename}`);
     } catch (error) {
         console.error(`Error al guardar datos en el archivo ${filename}:`, error);
     }

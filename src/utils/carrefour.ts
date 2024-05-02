@@ -79,7 +79,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
             available: true
         };
     }catch(e: any) {
-        console.log(e.message)
+        console.error(e.message)
         return null
     }
 };
