@@ -1,7 +1,6 @@
 import { Hono } from "hono";
-import { db } from "../../../database/prisma";
-import { productFillData } from "../../../utils/productFillData";
-import { getOnlyDateWithoutHours } from "../../../utils/date";
+import { db } from "../../../database/prisma.js";
+import { getOnlyDateWithoutHours } from "../../../utils/date.js";
 
 const productsRouter = new Hono()
 

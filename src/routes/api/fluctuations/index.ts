@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { updateProductFluctuations } from "../../../services/fluctuations";
+import { updateProductFluctuations } from "../../../services/fluctuations.js";
 
 const fluctuationsRouter = new Hono()
 

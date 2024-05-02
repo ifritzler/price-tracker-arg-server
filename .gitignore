@@ -4,3 +4,4 @@ node_modules
 links-carrefour.json
 links-coto.json
 /prisma/dev.db
+/target

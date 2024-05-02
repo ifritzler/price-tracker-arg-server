@@ -1,7 +1,7 @@
-import { db } from "../database/prisma";
-import { getProductDataCarrefour } from "../utils/carrefour";
-import { getProductDataCoto } from "../utils/coto";
-import { getOnlyDateWithoutHours } from "../utils/date";
+import { db } from "../database/prisma.js";
+import { getProductDataCarrefour } from "../utils/carrefour.js";
+import { getProductDataCoto } from "../utils/coto.js";
+import { getOnlyDateWithoutHours } from "../utils/date.js";
 
 export async function updateProductFluctuations(): Promise<{ error: string; message?: undefined; } | { message: string; error?: undefined; }> {
     try {

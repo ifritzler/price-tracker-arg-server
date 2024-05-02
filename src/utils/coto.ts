@@ -1,5 +1,5 @@
 import htmlParser from 'node-html-parser';
-import { getOnlyDateWithoutHours } from './date';
+import { getOnlyDateWithoutHours } from './date.js';
 
 const fetchProductHtml = async (productLink: string) => {
     if (!productLink) {

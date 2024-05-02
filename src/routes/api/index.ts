@@ -3,8 +3,8 @@ import { cors } from "hono/cors";
 import { RegExpRouter } from "hono/router/reg-exp-router";
 import { SmartRouter } from "hono/router/smart-router";
 import { TrieRouter } from "hono/router/trie-router";
-import fluctuationsRouter from "./fluctuations";
-import productsRouter from "./products";
+import fluctuationsRouter from "./fluctuations/index.js";
+import productsRouter from "./products/index.js";
 
 const api = new Hono({
     router: new SmartRouter({

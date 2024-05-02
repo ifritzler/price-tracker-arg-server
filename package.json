@@ -1,7 +1,10 @@
 {
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node --experimental-specifier-resolution=node ./target/src/index.js"
   },
+  "type": "module",
   "dependencies": {
     "@hono/node-server": "^1.10.0",
     "@libsql/client": "^0.6.0",

@@ -1,9 +1,9 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { logger } from 'hono/logger'
-import api from './routes/api'
-import crawler from './routes/crawler'
-import { createJobToUpdateProductsEachDay } from './schedule'
+import api from './routes/api/index.js'
+import crawler from './routes/crawler/index.js'
+import { createJobToUpdateProductsEachDay } from './schedule.js'
 
 const app = new Hono()
 

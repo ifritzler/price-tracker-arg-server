@@ -1,5 +1,5 @@
 import { CronJob } from "cron";
-import { updateProductFluctuations } from "./services/fluctuations";
+import { updateProductFluctuations } from "./services/fluctuations.js";
 
 export function createJobToUpdateProductsEachDay() {
     const job = CronJob.from({

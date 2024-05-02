@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import fs from 'node:fs/promises';
 import { Browser, Builder, By, until } from 'selenium-webdriver';
-import { db } from '../../database/prisma';
-import { getProductDataCarrefour } from '../../utils/carrefour';
-import { getOnlyDateWithoutHours } from '../../utils/date';
-import { saveDataToFile } from '../../utils/files';
+import { db } from '../../database/prisma.js';
+import { getProductDataCarrefour } from '../../utils/carrefour.js';
+import { getOnlyDateWithoutHours } from '../../utils/date.js';
+import { saveDataToFile } from '../../utils/files.js';
 
 const crawler = new Hono()
 
