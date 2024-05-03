@@ -26,7 +26,13 @@ productsRouter.get('', async (c) => {
                     },
                     take: 1
                 },
-                supermarket: true
+                supermarket: true,
+                category: {
+                    select: {
+                        name: true,
+                        id: true
+                    }
+                }
             },
             orderBy: {
                 id: 'asc'

@@ -1,6 +1,5 @@
 import { CronJob } from "cron";
 import { updateProductFluctuations } from "./services/fluctuations.js";
-import { db } from "./database/prisma.js";
 
 export function createJobToUpdateProductsEachDay() {
     
