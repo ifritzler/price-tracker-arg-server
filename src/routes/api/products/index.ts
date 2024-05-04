@@ -20,24 +20,27 @@ productsRouter.get('', async (c) => {
         }
 
         const pageSize = 16;
-        const totalCount = await db.product.count({
-            where: {
-                available: true,
-                ...(q.trim() !== '' && {
-                    OR: [
-                        { title: { contains: q } },
-                        { supermarket: { name: { contains: q } } }
-                    ]
-                }),
-                ...(p === 'true' && {
-                    dailyPrices: {
-                        some: {
-                            date: getOnlyDateWithoutHours(),
-                            hasPromotion: true
-                        }
+
+        const commonWhereQuery = {
+            available: true,
+            ...(q.trim() !== '' && {
+                OR: [
+                    { title: { contains: q } },
+                    { supermarket: { name: { contains: q } } }
+                ]
+            }),
+            ...(p === 'true' && {
+                dailyPrices: {
+                    some: {
+                        date: getOnlyDateWithoutHours(),
+                        hasPromotion: true
                     }
-                })
-            }
+                }
+            })
+        }
+
+        const totalCount = await db.product.count({
+            where: commonWhereQuery
         });
         const totalPages = Math.ceil(totalCount / pageSize);
         const currentPage = parseInt(page);
@@ -45,23 +48,7 @@ productsRouter.get('', async (c) => {
         const endIndex = Math.min(currentPage * pageSize, totalCount);
 
         let products = totalCount === 0 ? [] : await db.product.findMany({
-            where: {
-                available: true,
-                ...(q.trim() !== '' && {
-                    OR: [
-                        { title: { contains: q } },
-                        { supermarket: { name: { contains: q } } }
-                    ]
-                }),
-                ...(p === 'true' && {
-                    dailyPrices: {
-                        some: {
-                            date: getOnlyDateWithoutHours(),
-                            hasPromotion: true
-                        }
-                    }
-                })
-            },
+            where: commonWhereQuery,
             include: {
                 dailyPrices: {
                     orderBy: {
