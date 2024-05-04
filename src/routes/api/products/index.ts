@@ -4,20 +4,63 @@ import { getOnlyDateWithoutHours } from "../../../utils/date.js";
 
 const productsRouter = new Hono()
 
-// Obtener todos los productos
+// GET /api/products
 productsRouter.get('', async (c) => {
     try {
-        const { page = '1' } = c.req.query(); // Obtener el número de página de la consulta, por defecto es la página 1
-        const pageSize = 16; // Establecer el tamaño de la página
-        const totalCount = await db.product.count(); // Obtener el total de productos
-        const totalPages = Math.ceil(totalCount / pageSize); // Calcular el total de páginas
-        const currentPage = parseInt(page); // Convertir el número de página a entero
-        const startIndex = (currentPage - 1) * pageSize; // Calcular el índice de inicio
-        const endIndex = Math.min(currentPage * pageSize, totalCount); // Calcular el índice de fin
-        // Obtener los productos para la página actual con paginación
-        const products = await db.product.findMany({
+        /**
+         * Params for the request: 
+         * 'q' is the search param, 
+         * 'p' is the param who looks the products with discount and the value can be only true or false 
+         */
+        let { page = '1', p = 'false', q = '' } = c.req.query();
+
+        const booleanValues = ["true", "false"]
+        if (!booleanValues.includes(p)) {
+            p = 'false'
+        }
+
+        const pageSize = 16;
+        const totalCount = await db.product.count({
             where: {
-                available: true
+                available: true,
+                ...(q.trim() !== '' && {
+                    OR: [
+                        { title: { contains: q } },
+                        { supermarket: { name: { contains: q } } }
+                    ]
+                }),
+                ...(p === 'true' && {
+                    dailyPrices: {
+                        some: {
+                            date: getOnlyDateWithoutHours(),
+                            hasPromotion: true
+                        }
+                    }
+                })
+            }
+        });
+        const totalPages = Math.ceil(totalCount / pageSize);
+        const currentPage = parseInt(page);
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(currentPage * pageSize, totalCount);
+
+        let products = totalCount === 0 ? [] : await db.product.findMany({
+            where: {
+                available: true,
+                ...(q.trim() !== '' && {
+                    OR: [
+                        { title: { contains: q } },
+                        { supermarket: { name: { contains: q } } }
+                    ]
+                }),
+                ...(p === 'true' && {
+                    dailyPrices: {
+                        some: {
+                            date: getOnlyDateWithoutHours(),
+                            hasPromotion: true
+                        }
+                    }
+                })
             },
             include: {
                 dailyPrices: {
@@ -32,7 +75,7 @@ productsRouter.get('', async (c) => {
                         name: true,
                         id: true
                     }
-                }
+                },
             },
             orderBy: {
                 id: 'asc'

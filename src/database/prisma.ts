@@ -6,7 +6,7 @@ import { createClient } from '@libsql/client'
 function createPrismaClient() {
     const env = process.env.NODE_ENV;
     if (env === 'develop') {
-        return new PrismaClient();
+        return new PrismaClient({ log: ['query', 'info', 'error', 'warn'] });
     }
 
     const libsql = createClient({
