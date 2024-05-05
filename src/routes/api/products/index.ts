@@ -12,6 +12,7 @@ productsRouter.get('', async (c) => {
      * 'q' is the search param,
      * 'p' is the param who looks the products with discount and the value can be only true or false
      */
+    // eslint-disable-next-line prefer-const
     let { page = '1', p = 'false', q = '' } = c.req.query()
 
     const booleanValues = ['true', 'false']
@@ -47,7 +48,7 @@ productsRouter.get('', async (c) => {
     const startIndex = (currentPage - 1) * pageSize
     const endIndex = Math.min(currentPage * pageSize, totalCount)
 
-    let products =
+    const products =
       totalCount === 0
         ? []
         : await db.product.findMany({

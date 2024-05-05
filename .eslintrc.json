@@ -4,5 +4,6 @@
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
   "rules": {
     // Agrega reglas personalizadas según tu preferencia
+    "@typescript-eslint/no-explicit-any": "warn"
   }
 }

@@ -43,10 +43,10 @@ export const getProductDataCoto = async (productLink: string) => {
   const imageElement = parsed.querySelector('img.zoomImage1.img-responsive')
   const imageSrc = imageElement?.getAttribute('src') ?? ''
 
-  let priceContainer =
+  const priceContainer =
     parsed.querySelector('.atg_store_productPrice>.atg_store_newPrice') ||
     parsed.querySelector('span.price_regular_precio')
-  let hasPromotion = Boolean(
+  const hasPromotion = Boolean(
     parsed.querySelector('span.price_discount') ||
       parsed.querySelector('span.price_discount_gde'),
   )

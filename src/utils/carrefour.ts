@@ -78,7 +78,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
     )
     const imageSrc = imageElement?.getAttribute('src') ?? ''
 
-    let priceContainer =
+    const priceContainer =
       parsed.querySelector(
         '.vtex-flex-layout-0-x-flexCol.vtex-flex-layout-0-x-flexCol--product-view-prices-container',
       ) ??
@@ -87,7 +87,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
       )
     // Si el segundo child de este elemento esta vacio significa que no esta de promo el producto
 
-    let hasPromotion = Boolean(priceContainer?.childNodes[1].innerText !== '')
+    const hasPromotion = Boolean(priceContainer?.childNodes[1].innerText !== '')
     const realPrice = hasPromotion
       ? extractPriceCarrefour(priceContainer?.childNodes[1])
       : extractPriceCarrefour(priceContainer?.childNodes[0])

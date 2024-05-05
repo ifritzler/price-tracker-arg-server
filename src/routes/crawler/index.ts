@@ -16,7 +16,7 @@ crawler.post('/carrefour/new-links', async (c) => {
       message: 'Ingrese una categoria',
     })
   }
-  let driver = await new Builder().forBrowser(Browser.FIREFOX).build()
+  const driver = await new Builder().forBrowser(Browser.FIREFOX).build()
   const links = []
   // first we need to delete the content of links-carrefour.json
   await fs.writeFile('links-carrefour.json', '[]')
@@ -72,7 +72,7 @@ crawler.post('/carrefour/new-links', async (c) => {
   } finally {
     await driver.quit()
     c.status(201)
-    return c.json({ links: links })
+    c.json({ links: links })
   }
 })
 
