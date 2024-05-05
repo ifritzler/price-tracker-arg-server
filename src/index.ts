@@ -15,10 +15,10 @@ app.route('crawler', crawler)
 const port = Number(process.env.PORT as unknown as number) || 3001
 console.info(`Server is running on port ${port}`)
 
-const updateJob = createJobToUpdateProductsEachDay();
-updateJob.start();
+const updateJob = createJobToUpdateProductsEachDay()
+updateJob.start()
 
 serve({
   fetch: app.fetch,
-  port
+  port,
 })
