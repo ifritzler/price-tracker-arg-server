@@ -10,7 +10,7 @@ export async function updateProductFluctuations(): Promise<
   try {
     // Obtiene la fecha actual sin horas
     const currentDayTimeWithoutHours = getOnlyDateWithoutHours()
-
+    console.log(currentDayTimeWithoutHours)
     // Consulta para obtener productos cuya última fecha de precio no sea hoy
     const productsToUpdate = await db.product.findMany({
       include: {

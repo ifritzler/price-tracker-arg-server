@@ -1,7 +1,8 @@
 export function getOnlyDateWithoutHours() {
   const date = getActualHourBuenosAires()
-  date.setHours(0, 0, 0, 0)
-  return date;
+  date.setHours(-3, 0, 0, 0)
+  const dateModified = new Date(date)
+  return dateModified;
 }
 
 export function getActualHourBuenosAires() {
