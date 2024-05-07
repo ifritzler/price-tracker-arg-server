@@ -1,7 +1,15 @@
 export function getOnlyDateWithoutHours() {
-  return new Date(new Date().setHours(-3, 0, 0, 0))
+  const date = getActualHourBuenosAires()
+  date.setHours(0, 0, 0, 0)
+  return date;
 }
 
 export function getActualHourBuenosAires() {
-  return new Date(new Date().getTime() - 1000 * 60 * 60 * 3)
+  const date = new Date();
+  const options = { timeZone: 'America/Argentina/Buenos_Aires' };
+  const localDateString = date.toLocaleString('en-US', options);
+  const localDate = new Date(localDateString);
+
+  return localDate
 }
+
