@@ -6,6 +6,7 @@ const productsRouter = new Hono()
 
 // GET /api/products
 productsRouter.get('', async (c) => {
+  console.log('epoch: ' + getOnlyDateWithoutHours().getTime())
   try {
     /**
      * Params for the request:
@@ -13,35 +14,58 @@ productsRouter.get('', async (c) => {
      * 'p' is the param who looks the products with discount and the value can be only true or false
      */
     // eslint-disable-next-line prefer-const
-    let { page = '1', p = 'false', q = '' } = c.req.query()
+    let { page = '1', p = 'false', inc = 'false', q = '' } = c.req.query()
 
     const booleanValues = ['true', 'false']
     if (!booleanValues.includes(p)) {
       p = 'false'
     }
-
-    const pageSize = 16
-
-    const commonWhereQuery = {
-      available: true,
-      ...(q.trim() !== '' && {
-        OR: [
-          { title: { contains: q } },
-          { supermarket: { name: { contains: q } } },
-        ],
-      }),
-      ...(p === 'true' && {
-        dailyPrices: {
-          some: {
-            date: getOnlyDateWithoutHours(),
-            hasPromotion: true,
-          },
-        },
-      }),
+    if (!booleanValues.includes(inc)) {
+      inc = 'false'
     }
 
+    const filterConditions = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      AND: [] as any,
+    }
+
+    if (p === 'true') {
+      filterConditions.AND.push({
+        dailyPrices: {
+          some: {
+            AND: [{ hasPromotion: true }, { date: getOnlyDateWithoutHours() }],
+          },
+        },
+      })
+    }
+
+    if (inc === 'true') {
+      filterConditions.AND.push({
+        dailyPrices: {
+          some: {
+            AND: [
+              { diffPercentage: { gt: 0 } },
+              { date: getOnlyDateWithoutHours() },
+            ],
+          },
+        },
+      })
+    }
+
+    if (q !== '') {
+      filterConditions.AND.push({
+        OR: [
+          {
+            title: { contains: q },
+            supermarket: { name: { contains: q } },
+          },
+        ],
+      })
+    }
+
+    const pageSize = 16
     const totalCount = await db.product.count({
-      where: commonWhereQuery,
+      where: filterConditions,
     })
     const totalPages = Math.ceil(totalCount / pageSize)
     const currentPage = parseInt(page)
@@ -52,7 +76,7 @@ productsRouter.get('', async (c) => {
       totalCount === 0
         ? []
         : await db.product.findMany({
-            where: commonWhereQuery,
+            where: filterConditions,
             include: {
               dailyPrices: {
                 orderBy: {

@@ -14,8 +14,8 @@ export function createJobToUpdateProductsEachDay() {
         }
         const { error, message } = await updateProductFluctuations()
         console.info({ error, message })
-      } catch (error: any) {
-        console.error(error.message)
+      } catch (error: Error | unknown) {
+        error instanceof Error && console.log(error.message)
       }
     },
     start: false,
