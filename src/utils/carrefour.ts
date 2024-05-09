@@ -1,11 +1,13 @@
-import htmlParser from 'node-html-parser'
+import htmlParser, { HTMLElement } from 'node-html-parser'
 import { getOnlyDateWithoutHours } from './date.js'
+import { db } from '../database/prisma.js'
 
 const fetchProductHtml = async (productLink: string) => {
   if (!productLink) {
     throw new Error('Request error, some params id missing.')
   }
   const response = await fetch(productLink ?? '')
+  if(response.status === 404) throw new Error('El Producto ya no existe')
   return await response.text()
 }
 
@@ -43,7 +45,7 @@ const extractPromoPriceCarrefour = (parsed: any) => {
   // const sellingPriceContainer = parsed.querySelector('.vtex-flex-layout-0-x-flexColChild.vtex-flex-layout-0-x-flexColChild--product-view-prices-container.pb0');
   const priceWithoutDecimals = parsed
     .querySelectorAll('.valtech-carrefourar-product-price-0-x-currencyInteger')
-    .map((elem: any) => elem.innerText)
+    .map((elem: HTMLElement) => elem.innerText)
     .join('')
   if (parsed) {
     // const sellingPriceWithoutDecimals = sellingPriceContainer.querySelector('.valtech-carrefourar-product-price-0-x-currencyInteger')?.innerText;
@@ -62,7 +64,6 @@ export const getProductDataCarrefour = async (productLink: string) => {
     const html = await fetchProductHtml(productLink)
     const parsed = htmlParser.parse(html)
     const available = isAvailable(parsed)
-
     if (!available)
       return {
         url: productLink,
@@ -78,7 +79,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
     )
     const imageSrc = imageElement?.getAttribute('src') ?? ''
 
-    const priceContainer =
+    const priceContainer: HTMLElement | null =
       parsed.querySelector(
         '.vtex-flex-layout-0-x-flexCol.vtex-flex-layout-0-x-flexCol--product-view-prices-container',
       ) ??
@@ -105,8 +106,26 @@ export const getProductDataCarrefour = async (productLink: string) => {
       url: productLink ?? '',
       available: true,
     }
-  } catch (e: any) {
-    console.error(e.message)
+  } catch (e: Error | unknown) {
+    if(e instanceof Error && e.message === 'El Producto ya no existe') {
+      const product = await db.product.findFirst({
+        where: {
+          url: productLink
+        }
+      })
+      await db.productDailyPrice.deleteMany({
+        where: {
+          productId: product?.id
+        }
+      })
+      await db.product.delete({
+        where: {
+          id: product?.id
+        }
+      })
+      return null
+    }
+    console.error((e as Error).message)
     return null
   }
 }
