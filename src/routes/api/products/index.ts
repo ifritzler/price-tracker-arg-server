@@ -6,7 +6,6 @@ const productsRouter = new Hono()
 
 // GET /api/products
 productsRouter.get('', async (c) => {
-  console.log('epoch: ' + getOnlyDateWithoutHours().getTime())
   try {
     /**
      * Params for the request:
