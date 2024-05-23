@@ -1,6 +1,5 @@
 import htmlParser, { HTMLElement } from 'node-html-parser'
 import { getOnlyDateWithoutHours } from './date.js'
-import { db } from '../database/prisma.js'
 
 const fetchProductHtml = async (productLink: string) => {
   if (!productLink) {
@@ -41,7 +40,7 @@ const isAvailable = (parsed: any) => {
   return true
 }
 
-const extractPromoPriceCarrefour = (parsed: any) => {
+const extractdiscountPriceCarrefour = (parsed: any) => {
   // const sellingPriceContainer = parsed.querySelector('.vtex-flex-layout-0-x-flexColChild.vtex-flex-layout-0-x-flexColChild--product-view-prices-container.pb0');
   const priceWithoutDecimals = parsed
     .querySelectorAll('.valtech-carrefourar-product-price-0-x-currencyInteger')
@@ -88,43 +87,25 @@ export const getProductDataCarrefour = async (productLink: string) => {
       )
     // Si el segundo child de este elemento esta vacio significa que no esta de promo el producto
 
-    const hasPromotion = Boolean(priceContainer?.childNodes[1].innerText !== '')
-    const realPrice = hasPromotion
+    const hasDiscount = Boolean(priceContainer?.childNodes[1].innerText !== '')
+    const realPrice = hasDiscount
       ? extractPriceCarrefour(priceContainer?.childNodes[1])
       : extractPriceCarrefour(priceContainer?.childNodes[0])
-    const promoPrice = !hasPromotion
+    const discountPrice = !hasDiscount
       ? realPrice
-      : extractPromoPriceCarrefour(priceContainer?.childNodes[0])
+      : extractdiscountPriceCarrefour(priceContainer?.childNodes[0])
     return {
       title,
       category,
       realPrice,
-      promoPrice,
+      discountPrice,
       imageUrl: imageSrc,
       date: getOnlyDateWithoutHours(),
-      hasPromotion,
+      hasDiscount,
       url: productLink ?? '',
       available: true,
     }
   } catch (e: Error | unknown) {
-    if(e instanceof Error && e.message === 'El Producto ya no existe') {
-      const product = await db.product.findFirst({
-        where: {
-          url: productLink
-        }
-      })
-      await db.productDailyPrice.deleteMany({
-        where: {
-          productId: product?.id
-        }
-      })
-      await db.product.delete({
-        where: {
-          id: product?.id
-        }
-      })
-      return null
-    }
     console.error((e as Error).message)
     return null
   }

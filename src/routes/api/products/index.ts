@@ -1,6 +1,13 @@
 import { Hono } from 'hono'
-import { db } from '../../../database/prisma.js'
-import { getOnlyDateWithoutHours } from '../../../utils/date.js'
+import { db } from '../../../database/postgres.js'
+import {
+  categories,
+  productDailyPrices,
+  products,
+  supermarkets,
+} from '../../../database/schema.js'
+import { and, eq, asc, gt, or, ilike, lte, sql } from 'drizzle-orm'
+import { DateTime } from 'luxon'
 
 const productsRouter = new Hono()
 
@@ -13,7 +20,10 @@ productsRouter.get('', async (c) => {
      * 'p' is the param who looks the products with discount and the value can be only true or false
      */
     // eslint-disable-next-line prefer-const
-    let { page = '1', p = 'false', inc = 'false', q = '' } = c.req.query()
+    let { p = 'false', inc = 'false', q = '', page = '1' } = c.req.query()
+    const LIMIT_PRODUCTS_PER_PAGE = 16
+    const pageNumber = Number(page)
+    const PAGE = isNaN(pageNumber) ? 1 : pageNumber
 
     const booleanValues = ['true', 'false']
     if (!booleanValues.includes(p)) {
@@ -23,228 +33,139 @@ productsRouter.get('', async (c) => {
       inc = 'false'
     }
 
-    const filterConditions = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      AND: [] as any,
-    }
+    const desiredDate = DateTime.now()
+      .setZone('America/Argentina/Buenos_Aires')
+      .toSQLDate()
+    const date = new Date(desiredDate!)
 
-    if (p === 'true') {
-      filterConditions.AND.push({
-        dailyPrices: {
-          some: {
-            AND: [{ hasPromotion: true }, { date: getOnlyDateWithoutHours() }],
+    const [response, count] = await Promise.all([
+      db
+        .select({
+          id: products.id,
+          title: products.title,
+          url: products.url,
+          imageUrl: products.imageUrl,
+          categoryId: products.categoryId,
+          supermarketId: products.supermarketId,
+          category: {
+            name: categories.name,
           },
-        },
-      })
-    }
-
-    if (inc === 'true') {
-      filterConditions.AND.push({
-        dailyPrices: {
-          some: {
-            AND: [
-              { diffPercentage: { gt: 0 } },
-              { date: getOnlyDateWithoutHours() },
-            ],
+          supermarket: {
+            name: supermarkets.name,
           },
-        },
-      })
-    }
+          dailyPrices: productDailyPrices,
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
+        .leftJoin(
+          productDailyPrices,
+          and(
+            eq(products.id, productDailyPrices.productId),
+            lte(productDailyPrices.date, date.toISOString()),
+          ),
+        )
+        .where(
+          and(
+            eq(products.available, true),
+            p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
+            inc === 'true'
+              ? gt(productDailyPrices.diffPercentage, String(0.0))
+              : undefined,
+            q !== ''
+              ? or(
+                  ilike(products.title, `%${q}%`),
+                  ilike(supermarkets.name, `%${q}%`),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(asc(products.id))
+        .offset(LIMIT_PRODUCTS_PER_PAGE * PAGE - LIMIT_PRODUCTS_PER_PAGE)
+        .limit(LIMIT_PRODUCTS_PER_PAGE),
+      db
+        .select({ count: sql<number>`cast(count(${products.id}) as integer)` })
+        .from(products)
+        .leftJoin(
+          productDailyPrices,
+          and(
+            eq(products.id, productDailyPrices.productId),
+            lte(productDailyPrices.date, date.toISOString()),
+          ),
+        )
+        .where(
+          and(
+            eq(products.available, true),
+            p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
+            inc === 'true'
+              ? gt(productDailyPrices.diffPercentage, String(0.0))
+              : undefined,
+            q !== ''
+              ? or(
+                  ilike(products.title, `%${q}%`),
+                  ilike(supermarkets.name, `%${q}%`),
+                )
+              : undefined,
+          ),
+        ),
+    ])
 
-    if (q !== '') {
-      filterConditions.AND.push({
-        OR: [
-          {
-            title: { contains: q },
-            supermarket: { name: { contains: q } },
-          },
-        ],
-      })
-    }
+    // const query = db
+    //   .select({
+    //     id: products.id,
+    //     title: products.title,
+    //     url: products.url,
+    //     imageUrl: products.imageUrl,
+    //     categoryId: products.categoryId,
+    //     supermarketId: products.supermarketId,
+    //     category: {
+    //       name: categories.name,
+    //     },
+    //     supermarket: {
+    //       name: supermarkets.name,
+    //     },
+    //     dailyPrices: productDailyPrices,
+    //   })
+    //   .from(products)
+    //   .leftJoin(categories, eq(products.categoryId, categories.id))
+    //   .leftJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
+    //   .leftJoin(
+    //     productDailyPrices,
+    //     and(
+    //       eq(products.id, productDailyPrices.productId),
+    //       lte(productDailyPrices.date, date.toISOString()),
+    //     ),
+    //   )
+    //   .where(
+    //     and(
+    //       eq(products.available, true),
+    //       p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
+    //       inc === 'true'
+    //         ? gt(productDailyPrices.diffPercentage, String(0.0))
+    //         : undefined,
+    //       q !== ''
+    //         ? or(
+    //             ilike(products.title, `%${q}%`),
+    //             ilike(supermarkets.name, `%${q}%`),
+    //           )
+    //         : undefined,
+    //     ),
+    //   )
+    //   .orderBy(asc(products.id))
 
-    const pageSize = 16
-    const totalCount = await db.product.count({
-      where: filterConditions,
-    })
-    const totalPages = Math.ceil(totalCount / pageSize)
-    const currentPage = parseInt(page)
-    const startIndex = (currentPage - 1) * pageSize
-    const endIndex = Math.min(currentPage * pageSize, totalCount)
-
-    const products =
-      totalCount === 0
-        ? []
-        : await db.product.findMany({
-            where: filterConditions,
-            include: {
-              dailyPrices: {
-                orderBy: {
-                  date: 'desc',
-                },
-                take: 1,
-              },
-              supermarket: true,
-              category: {
-                select: {
-                  name: true,
-                  id: true,
-                },
-              },
-            },
-            orderBy: {
-              id: 'asc',
-            },
-            skip: startIndex, // Saltar los productos anteriores a la página actual
-            take: pageSize, // Obtener solo los productos de la página actual
-          })
-
+    // const result = await query
     return c.json({
-      data: products,
+      data: response,
       meta: {
-        totalCount,
-        totalPages,
-        currentPage,
-        startIndex,
-        endIndex,
+        totalCount: count[0].count,
+        totalPages: Math.ceil(count[0].count / LIMIT_PRODUCTS_PER_PAGE),
+        currentPage: PAGE,
       },
     })
   } catch (e) {
     console.error('Error al obtener productos:', e)
     c.status(500)
     return c.json({ error: 'Internal server error' })
-  }
-})
-
-productsRouter.get('/discounts', async (c) => {
-  const products = await db.product.findMany({
-    where: {
-      dailyPrices: {
-        some: {
-          diffPercentage: {
-            lt: 0.0,
-          },
-        },
-      },
-    },
-    include: {
-      dailyPrices: {
-        orderBy: {
-          date: 'desc',
-        },
-        take: 1,
-      },
-      category: true,
-      supermarket: true,
-    },
-  })
-  return c.json({
-    success: true,
-    data: products,
-  })
-})
-
-productsRouter.post('/', async (c) => {
-  try {
-    const {
-      title,
-      supermercado,
-      productUrl,
-      imageUrl,
-      category,
-      hasPromotion,
-      realPrice,
-      promoPrice,
-    } = await c.req.json()
-
-    if (
-      !title ||
-      !supermercado ||
-      !productUrl ||
-      !imageUrl ||
-      !category ||
-      !realPrice ||
-      !promoPrice
-    )
-      throw new Error('Faltan datos')
-
-    const supermarket = await db.supermarket.findFirst({
-      where: {
-        name: supermercado,
-      },
-    })
-    const cat = await db.category.findFirst({
-      where: {
-        name: category,
-      },
-    })
-    if (!supermarket) throw new Error('Supermercado no encontrado')
-    if (!cat) throw new Error('Categoria no encontrada')
-
-    const product = await db.$transaction(async (tsx) => {
-      const product = await tsx.product.create({
-        data: {
-          title,
-          supermarketId: supermarket.id,
-          url: productUrl,
-          imageUrl,
-          categoryId: cat.id,
-        },
-        include: {
-          supermarket: true,
-          category: true,
-          dailyPrices: true,
-        },
-      })
-
-      const dailyPrice = await tsx.productDailyPrice.create({
-        data: {
-          productId: product.id,
-          hasPromotion: hasPromotion === 'on' ? true : false,
-          price: parseFloat(realPrice),
-          promoPrice: parseFloat(promoPrice),
-          date: getOnlyDateWithoutHours(),
-          diffPercentage: 0.0,
-        },
-      })
-      return {
-        ...product,
-        dailyPrices: [dailyPrice],
-      }
-    })
-
-    return c.json({
-      data: product,
-    })
-  } catch (e) {
-    console.error('Error al guardar un producto:', e)
-    c.status(400)
-    return c.json({ error: 'Bad request' })
-  }
-})
-
-productsRouter.get('/:id', async (c) => {
-  try {
-    const { id } = c.req.param()
-    const idn = parseInt(id)
-    if (!id || isNaN(idn)) {
-      c.status(400)
-      return c.json({ error: 'Product ID is required' })
-    }
-    const product = await db.product.findFirst({
-      where: { id: idn },
-      include: {
-        dailyPrices: true,
-      },
-    })
-    if (!product) {
-      c.status(404)
-      return c.json({ error: 'Product not found' })
-    }
-    return c.json({ data: product })
-  } catch (e) {
-    console.error('Error al buscar un producto:', e)
-    c.status(404)
-    return c.json({ error: 'Producto no encontrado' })
   }
 })
 

@@ -27,9 +27,9 @@ CREATE TABLE "Product" (
 CREATE TABLE "ProductDailyPrice" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "productId" INTEGER NOT NULL,
-    "hasPromotion" BOOLEAN NOT NULL,
+    "hasDiscount" BOOLEAN NOT NULL,
     "price" REAL NOT NULL,
-    "promoPrice" REAL NOT NULL,
+    "discountPrice" REAL NOT NULL,
     "date" DATETIME NOT NULL,
     CONSTRAINT "ProductDailyPrice_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );

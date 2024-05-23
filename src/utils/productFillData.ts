@@ -11,11 +11,11 @@ export async function productFillData(
     ...productWithoutDailyPrices,
     supermarket: supermarket.name,
     price: dailyPrices[dailyPrices.length - 1].price,
-    hasPromotion:
-      dailyPrices[dailyPrices.length - 1].hasPromotion,
-    promoPrice: dailyPrices[dailyPrices.length - 1].promoPrice,
+    hasDiscount:
+      dailyPrices[dailyPrices.length - 1].hasDiscount,
+    discountPrice: dailyPrices[dailyPrices.length - 1].discountPrice,
     // Variation % of the last 2 prices if we have more than 2 prices
-    diffPercentage: dailyPrices[0].diffPercentage,
+    diffPercentage: dailyPrices.diffPercentage,
     available: product.available,
   }
   return productFilled

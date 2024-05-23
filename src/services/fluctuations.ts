@@ -69,16 +69,16 @@ export async function updateProductFluctuations(): Promise<
                 where: { id: productId },
                 data: { available: response.available },
               })
-              const diff = response.realPrice! - product.dailyPrices[0].price
-              const diffPercentage = (diff / product.dailyPrices[0].price) * 100
+              const diff = response.realPrice! - product.dailyPrices.price
+              const diffPercentage = (diff / product.dailyPrices.price) * 100
 
               // Crea una nueva fluctuación de precio
               await db.productDailyPrice.create({
                 data: {
                   productId: productId,
-                  hasPromotion: Boolean(response.hasPromotion),
+                  hasDiscount: Boolean(response.hasDiscount),
                   price: response.realPrice as number,
-                  promoPrice: response.promoPrice as number,
+                  discountPrice: response.discountPrice as number,
                   date: response.date as Date,
                   diffPercentage: diffPercentage || 0.0,
                 },

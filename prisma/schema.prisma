@@ -46,9 +46,9 @@ model ProductDailyPrice {
   id             Int      @id() @default(autoincrement())
   productId      Int
   product        Product  @relation(fields: [productId], references: [id])
-  hasPromotion   Boolean
+  hasDiscount   Boolean
   price          Float
-  promoPrice     Float
+  discountPrice     Float
   date           DateTime
   diffPercentage Float    @default(0.0)
 

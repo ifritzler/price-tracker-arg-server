@@ -1,9 +1,12 @@
 {
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:prod": "tsx watch src/index.ts NODE_ENV=prod",
     "build": "tsc",
     "start": "node --experimental-specifier-resolution=node ./target/src/index.js",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "generate": "drizzle-kit generate --config=src/database/drizzle.config.ts",
+    "migrate": "drizzle-kit migrate --config=src/database/drizzle.config.ts"
   },
   "type": "module",
   "dependencies": {
@@ -12,17 +15,23 @@
     "@prisma/adapter-libsql": "^5.12.1",
     "@prisma/client": "^5.12.1",
     "cron": "^3.1.7",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.30.10",
     "fast-xml-parser": "^4.3.6",
     "hono": "^4.2.3",
+    "luxon": "^3.4.4",
     "moment": "^2.30.1",
     "node-html-parser": "^6.1.13",
+    "postgres": "^3.4.4",
     "selenium-webdriver": "^4.19.0"
   },
   "devDependencies": {
+    "@types/dotenv": "^8.2.0",
     "@types/node": "^20.12.7",
     "@types/selenium-webdriver": "^4.1.22",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
+    "drizzle-kit": "^0.21.1",
     "eslint": "^8.57.0",
     "prisma": "^5.12.1",
     "ts-node": "^10.9.2",
