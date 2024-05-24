@@ -12,6 +12,7 @@ import {
 } from '../../database/schema.js'
 import { eq } from 'drizzle-orm'
 import { DateTime } from 'luxon'
+import { STOP_INSERTIONS } from '../../utils/constants.js'
 
 const crawler = new Hono()
 
@@ -166,7 +167,7 @@ crawler.post('/carrefour/new-links/update', async (c) => {
             }
 
             console.time(`Transaction Execution ${url}`)
-            await db.transaction(async (tsx) => {
+            !STOP_INSERTIONS && await db.transaction(async (tsx) => {
               console.time(`Insert Product ${url}`)
               const product = await tsx
                 .insert(products)

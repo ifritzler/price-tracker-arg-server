@@ -1,13 +1,5 @@
 import { Hono } from 'hono'
-import { db } from '../../../database/postgres.js'
-import {
-  categories,
-  productDailyPrices,
-  products,
-  supermarkets,
-} from '../../../database/schema.js'
-import { and, eq, asc, gt, or, ilike, lte, sql } from 'drizzle-orm'
-import { DateTime } from 'luxon'
+import { getProducts } from '../../../services/products.js'
 
 const productsRouter = new Hono()
 
@@ -33,127 +25,11 @@ productsRouter.get('', async (c) => {
       inc = 'false'
     }
 
-    const desiredDate = DateTime.now()
-      .setZone('America/Argentina/Buenos_Aires')
-      .toSQLDate()
-    const date = new Date(desiredDate!)
-
-    const [response, count] = await Promise.all([
-      db
-        .select({
-          id: products.id,
-          title: products.title,
-          url: products.url,
-          imageUrl: products.imageUrl,
-          categoryId: products.categoryId,
-          supermarketId: products.supermarketId,
-          category: {
-            name: categories.name,
-          },
-          supermarket: {
-            name: supermarkets.name,
-          },
-          dailyPrices: productDailyPrices,
-        })
-        .from(products)
-        .leftJoin(categories, eq(products.categoryId, categories.id))
-        .leftJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
-        .leftJoin(
-          productDailyPrices,
-          and(
-            eq(products.id, productDailyPrices.productId),
-            lte(productDailyPrices.date, date.toISOString()),
-          ),
-        )
-        .where(
-          and(
-            eq(products.available, true),
-            p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
-            inc === 'true'
-              ? gt(productDailyPrices.diffPercentage, String(0.0))
-              : undefined,
-            q !== ''
-              ? or(
-                  ilike(products.title, `%${q}%`),
-                  ilike(supermarkets.name, `%${q}%`),
-                )
-              : undefined,
-          ),
-        )
-        .orderBy(asc(products.id))
-        .offset(LIMIT_PRODUCTS_PER_PAGE * PAGE - LIMIT_PRODUCTS_PER_PAGE)
-        .limit(LIMIT_PRODUCTS_PER_PAGE),
-      db
-        .select({ count: sql<number>`cast(count(${products.id}) as integer)` })
-        .from(products)
-        .leftJoin(
-          productDailyPrices,
-          and(
-            eq(products.id, productDailyPrices.productId),
-            lte(productDailyPrices.date, date.toISOString()),
-          ),
-        )
-        .where(
-          and(
-            eq(products.available, true),
-            p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
-            inc === 'true'
-              ? gt(productDailyPrices.diffPercentage, String(0.0))
-              : undefined,
-            q !== ''
-              ? or(
-                  ilike(products.title, `%${q}%`),
-                  ilike(supermarkets.name, `%${q}%`),
-                )
-              : undefined,
-          ),
-        ),
-    ])
-
-    // const query = db
-    //   .select({
-    //     id: products.id,
-    //     title: products.title,
-    //     url: products.url,
-    //     imageUrl: products.imageUrl,
-    //     categoryId: products.categoryId,
-    //     supermarketId: products.supermarketId,
-    //     category: {
-    //       name: categories.name,
-    //     },
-    //     supermarket: {
-    //       name: supermarkets.name,
-    //     },
-    //     dailyPrices: productDailyPrices,
-    //   })
-    //   .from(products)
-    //   .leftJoin(categories, eq(products.categoryId, categories.id))
-    //   .leftJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
-    //   .leftJoin(
-    //     productDailyPrices,
-    //     and(
-    //       eq(products.id, productDailyPrices.productId),
-    //       lte(productDailyPrices.date, date.toISOString()),
-    //     ),
-    //   )
-    //   .where(
-    //     and(
-    //       eq(products.available, true),
-    //       p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
-    //       inc === 'true'
-    //         ? gt(productDailyPrices.diffPercentage, String(0.0))
-    //         : undefined,
-    //       q !== ''
-    //         ? or(
-    //             ilike(products.title, `%${q}%`),
-    //             ilike(supermarkets.name, `%${q}%`),
-    //           )
-    //         : undefined,
-    //     ),
-    //   )
-    //   .orderBy(asc(products.id))
-
-    // const result = await query
+    const [response, count] = await getProducts(
+      { p, inc, q },
+      LIMIT_PRODUCTS_PER_PAGE,
+      PAGE,
+    )
     return c.json({
       data: response,
       meta: {
@@ -170,3 +46,4 @@ productsRouter.get('', async (c) => {
 })
 
 export default productsRouter
+

@@ -16,8 +16,6 @@ api.use(
   '*',
   cors({
     origin: [process.env.CLIENT_DOMAIN as string],
-    allowMethods:
-      process.env.NODE_ENV !== 'develop' ? ['GET', 'POST'] : undefined,
   }),
 )
 
