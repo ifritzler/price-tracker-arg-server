@@ -1,7 +1,14 @@
-import { db } from '../database/prisma.js'
+import { eq, sql } from 'drizzle-orm'
+import { db } from '../database/postgres.js'
+import {
+  productDailyPrices,
+  products,
+  supermarkets,
+} from '../database/schema.js'
 import { getProductDataCarrefour } from '../utils/carrefour.js'
-import { getProductDataCoto } from '../utils/coto.js'
+import { STOP_INSERTIONS } from '../utils/constants.js'
 import { getOnlyDateWithoutHours } from '../utils/date.js'
+
 
 export async function updateProductFluctuations(): Promise<
   | { error: string; message?: undefined }
@@ -12,83 +19,81 @@ export async function updateProductFluctuations(): Promise<
     const currentDayTimeWithoutHours = getOnlyDateWithoutHours()
     console.log(currentDayTimeWithoutHours)
     // Consulta para obtener productos cuya última fecha de precio no sea hoy
-    const productsToUpdate = await db.product.findMany({
-      include: {
-        supermarket: true,
-        category: true,
-        dailyPrices: {
-          orderBy: {
-            date: 'desc',
-          },
-          take: 2,
-        },
-      },
-      where: {
-        NOT: {
-          dailyPrices: {
-            some: {
-              date: {
-                gte: currentDayTimeWithoutHours,
-              },
-            },
-          },
-        },
-      },
-    })
+    const subQuery = db
+      .select({
+        productId: productDailyPrices.productId,
+        lastUpdate: sql`MAX(${productDailyPrices.date})`.as('lastUpdate'),
+        lastPrice: productDailyPrices.price,
+      })
+      .from(productDailyPrices)
+      .where(sql`${productDailyPrices.date} < ${getOnlyDateWithoutHours()}`)
+      .groupBy(productDailyPrices.productId,productDailyPrices.price)
+      .as('latest_prices')
 
+    const productsToUpdate = await db
+      .select({
+        productId: products.id,
+        url: products.url,
+        supermarketName: supermarkets.name,
+        lastUpdate: subQuery.lastUpdate,
+        lastPrice: subQuery.lastPrice,
+      })
+      .from(products)
+      .innerJoin(subQuery, eq(subQuery.productId, products.id))
+      .leftJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
+    console.log({productsToUpdate})
     // Si no hay productos para actualizar, retorna un error
     if (productsToUpdate.length === 0) {
       return { error: 'No products to update' }
     }
 
     // Actualiza los productos en lotes de 10
-    const batchSize = 10
+    const batchSize = 20
     const batches = Math.ceil(productsToUpdate.length / batchSize)
     for (let i = 0; i < batches; i++) {
       const batch = productsToUpdate.slice(i * batchSize, (i + 1) * batchSize)
-      // Actualiza los productos en paralelo
-      await Promise.all(
-        batch.map(async (product) => {
-          const supermarket = product.url.includes('carrefour')
-            ? 'carrefour'
-            : 'coto'
-          const productId = product.id
-          const url = product.url
 
+      const batchData = await Promise.all(
+        batch.map(async (row) => {
           try {
-            let response
-            if (supermarket === 'carrefour') {
-              response = await getProductDataCarrefour(url)
-            } else if (supermarket === 'coto') {
-              response = await getProductDataCoto(url)
-            }
-
-            // Si el producto está disponible, actualiza su información
-            if (response?.available) {
-              await db.product.update({
-                where: { id: productId },
-                data: { available: response.available },
-              })
-              const diff = response.realPrice! - product.dailyPrices[0].price
-              const diffPercentage = (diff / product.dailyPrices[0].price) * 100
-
-              // Crea una nueva fluctuación de precio
-              await db.productDailyPrice.create({
-                data: {
-                  productId: productId,
-                  hasPromotion: Boolean(response.hasPromotion),
-                  price: response.realPrice as number,
-                  promoPrice: response.promoPrice as number,
-                  date: response.date as Date,
-                  diffPercentage: diffPercentage || 0.0,
-                },
-              })
-            }
+            return await getProductDataCarrefour(row.url)
           } catch (error) {
-            console.error(`Error into getProductData (${productId}):`, error)
+            console.error(`Error fetching data for link ${row.url}:`, error)
+            return null
           }
         }),
       )
+
+      // Actualiza los productos en db uno a uno
+      for (let j = 0; j < batchData.length; j++) {
+        const row = batch.find((prod) => prod.url === batchData[j]?.url)
+        try {
+          if (batchData[j]?.available && row) {
+            const response = batchData[j]!
+            !STOP_INSERTIONS && await db
+              .update(products)
+              .set({ available: response?.available })
+              .where(eq(products.url, response?.url || ''))
+
+            const diff = response.realPrice! - Number(row.lastPrice)
+            const diffPercentage = (diff / Number(row.lastPrice)) * 100
+
+            // Crea una nueva fluctuación de precio
+
+            !STOP_INSERTIONS && await db.insert(productDailyPrices).values({
+              // @ts-expect-error error expected but is ok
+              productId: row.productId,
+              diffPercentage: diffPercentage || 0.0,
+              hasDiscount: Boolean(response.hasDiscount),
+              price: response.realPrice as number,
+              discountPrice: response.discountPrice as number,
+              date: response.date,
+            })
+          }
+        } catch (error) {
+          console.error(`Error into getProductData (${row}):`, error)
+        }
+      }
     }
 
     return { message: 'Product updates finished' }

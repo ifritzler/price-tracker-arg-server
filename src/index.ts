@@ -3,7 +3,6 @@ import { Hono } from 'hono'
 import { logger } from 'hono/logger'
 import api from './routes/api/index.js'
 import crawler from './routes/crawler/index.js'
-import { createJobToUpdateProductsEachDay } from './schedule.js'
 
 const app = new Hono()
 
@@ -14,9 +13,6 @@ app.route('crawler', crawler)
 
 const port = Number(process.env.PORT as unknown as number) || 3001
 console.info(`Server is running on port ${port}`)
-
-const updateJob = createJobToUpdateProductsEachDay()
-updateJob.start()
 
 serve({
   fetch: app.fetch,

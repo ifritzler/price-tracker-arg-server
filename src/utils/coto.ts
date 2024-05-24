@@ -21,10 +21,10 @@ const isAvailable = (html: string) => {
   return isAvailable
 }
 
-const extractPromoPriceCoto = (parsed: any) => {
-  const promoPrice = parsed.innerText
-  const integer = promoPrice.split('.')[0].replace('$', '')
-  const decimal = promoPrice.split('.')[1]
+const extractdiscountPriceCoto = (parsed: any) => {
+  const discountPrice = parsed.innerText
+  const integer = discountPrice.split('.')[0].replace('$', '')
+  const decimal = discountPrice.split('.')[1]
   return parseFloat(integer?.concat('.', decimal ?? ''))
 }
 
@@ -46,14 +46,14 @@ export const getProductDataCoto = async (productLink: string) => {
   const priceContainer =
     parsed.querySelector('.atg_store_productPrice>.atg_store_newPrice') ||
     parsed.querySelector('span.price_regular_precio')
-  const hasPromotion = Boolean(
+  const hasDiscount = Boolean(
     parsed.querySelector('span.price_discount') ||
       parsed.querySelector('span.price_discount_gde'),
   )
 
   const realPrice = extractPriceCoto(priceContainer)
-  const promoPrice = hasPromotion
-    ? extractPromoPriceCoto(
+  const discountPrice = hasDiscount
+    ? extractdiscountPriceCoto(
         parsed.querySelector('span.price_discount') ||
           parsed.querySelector('span.price_discount_gde'),
       )
@@ -62,10 +62,10 @@ export const getProductDataCoto = async (productLink: string) => {
   return {
     title,
     realPrice,
-    promoPrice,
+    discountPrice,
     imageUrl: imageSrc,
     date: getOnlyDateWithoutHours(),
-    hasPromotion,
+    hasDiscount,
     url: productLink ?? '',
     available: true,
   }
