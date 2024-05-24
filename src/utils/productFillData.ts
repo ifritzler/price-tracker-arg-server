@@ -1,9 +1,8 @@
-import { Product, ProductDailyPrice, Supermarket } from '@prisma/client'
-
 export async function productFillData(
-  product: Product & {
-    dailyPrices: ProductDailyPrice[]
-    supermarket: Supermarket
+  // TODO!: Need to declare correct types instead ANY
+  product: any & {
+    dailyPrices: any
+    supermarket: any
   },
 ) {
   const { dailyPrices, supermarket, ...productWithoutDailyPrices } = product
