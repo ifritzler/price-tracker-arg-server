@@ -1,7 +1,7 @@
 import { and, asc, eq, gt, ilike, or, sql } from "drizzle-orm";
-import { categories, productDailyPrices, products, supermarkets } from "../database/schema";
-import { getOnlyDateWithoutHours } from "../utils/date";
-import { db } from "../database/postgres";
+import { categories, productDailyPrices, products, supermarkets } from "../database/schema.js";
+import { getOnlyDateWithoutHours } from "../utils/date.js";
+import { db } from "../database/postgres.js";
 
 export async function getProducts(
     filters: { p: string; inc: string; q: string },

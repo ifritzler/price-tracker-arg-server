@@ -3,7 +3,7 @@
     "dev": "tsx watch src/index.ts",
     "dev:prod": "tsx watch src/index.ts NODE_ENV=prod",
     "build": "tsc",
-    "start": "node --experimental-specifier-resolution=node ./target/src/index.js",
+    "start": "node --experimental-specifier-resolution=node ./target/index.js",
     "lint": "eslint . --ext .ts,.tsx",
     "generate": "drizzle-kit generate --config=src/database/drizzle.config.ts",
     "migrate": "drizzle-kit migrate --config=src/database/drizzle.config.ts"
