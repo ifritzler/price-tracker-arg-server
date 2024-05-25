@@ -8,6 +8,7 @@ export async function getProducts(
     LIMIT_PRODUCTS_PER_PAGE: number,
     PAGE: number,
   ) {
+    console.log({...filters})
     const { p, inc, q } = filters
     return await Promise.all([
       db
@@ -27,8 +28,8 @@ export async function getProducts(
           dailyPrices: productDailyPrices,
         })
         .from(products)
-        .leftJoin(categories, eq(products.categoryId, categories.id))
-        .leftJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
+        .innerJoin(categories, eq(products.categoryId, categories.id))
+        .innerJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
         .innerJoin(
           productDailyPrices,
           and(
@@ -45,9 +46,9 @@ export async function getProducts(
               : undefined,
             q !== ''
               ? or(
-                  ilike(products.title, `%${q}%`),
-                  ilike(supermarkets.name, `%${q}%`),
-                )
+                ilike(products.title, `%${q}%`),
+                ilike(supermarkets.name, `%${q}%`)
+              )
               : undefined,
           ),
         )
@@ -64,6 +65,7 @@ export async function getProducts(
             eq(productDailyPrices.date, getOnlyDateWithoutHours()),
           ),
         )
+        .innerJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
         .where(
           and(
             eq(products.available, true),
@@ -72,10 +74,10 @@ export async function getProducts(
               ? gt(productDailyPrices.diffPercentage, String(0.0))
               : undefined,
             q !== ''
-              ? or(
-                  ilike(products.title, `%${q}%`),
-                  ilike(supermarkets.name, `%${q}%`),
-                )
+              ?  or(
+                ilike(products.title, `%${q}%`),
+                ilike(supermarkets.name, `%${q}%`)
+              )
               : undefined,
           ),
         ),
