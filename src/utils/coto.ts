@@ -39,23 +39,23 @@ export const getProductDataCoto = async (productLink: string) => {
 
   const parsed = htmlParser.parse(html)
 
-  const title = parsed.querySelector('.product_page')?.innerText ?? ''
-  const imageElement = parsed.querySelector('img.zoomImage1.img-responsive')
+  const title = parsed?.querySelector('.product_page')?.innerText ?? ''
+  const imageElement = parsed?.querySelector('img.zoomImage1.img-responsive')
   const imageSrc = imageElement?.getAttribute('src') ?? ''
 
   const priceContainer =
-    parsed.querySelector('.atg_store_productPrice>.atg_store_newPrice') ||
-    parsed.querySelector('span.price_regular_precio')
+    parsed?.querySelector('.atg_store_productPrice>.atg_store_newPrice') ||
+    parsed?.querySelector('span.price_regular_precio')
   const hasDiscount = Boolean(
-    parsed.querySelector('span.price_discount') ||
-      parsed.querySelector('span.price_discount_gde'),
+    parsed?.querySelector('span.price_discount') ||
+      parsed?.querySelector('span.price_discount_gde'),
   )
 
   const realPrice = extractPriceCoto(priceContainer)
   const discountPrice = hasDiscount
     ? extractdiscountPriceCoto(
-        parsed.querySelector('span.price_discount') ||
-          parsed.querySelector('span.price_discount_gde'),
+        parsed?.querySelector('span.price_discount') ||
+          parsed?.querySelector('span.price_discount_gde'),
       )
     : realPrice
 

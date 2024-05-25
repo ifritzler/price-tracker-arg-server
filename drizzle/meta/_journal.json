@@ -15,6 +15,13 @@
       "when": 1715369027635,
       "tag": "0001_polite_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1716645895845,
+      "tag": "0002_ordinary_warlock",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import {
   text,
   numeric,
   date,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 
 export const categories = pgTable('categories', {
@@ -38,7 +39,7 @@ export const products = pgTable('products', {
 })
 
 export const productDailyPrices = pgTable('product_daily_prices', {
-  id: serial('id').primaryKey(),
+  id: serial('id'),
   productId: integer('product_id')
     .references(() => products.id, {
       onDelete: 'cascade',
@@ -49,7 +50,9 @@ export const productDailyPrices = pgTable('product_daily_prices', {
   discountPrice: numeric('discount_price', { precision: 12, scale: 2 }).notNull(),
   date: date('date', { mode: 'string' }).notNull(),
   diffPercentage: numeric('diff_percentage', { precision: 12, scale: 2 }).notNull(),
-})
+}, (t) => ({
+  compositePk: primaryKey({columns: [t.date, t.productId], name: 'product_date_pk'}),
+}))
 
 export const productDailyPricesRelations = relations(
   productDailyPrices,
