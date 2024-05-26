@@ -99,7 +99,7 @@ export const getProductDataCarrefour = async (productLink: string) => {
       realPrice,
       discountPrice,
       imageUrl: imageSrc,
-      date: getOnlyDateWithoutHours(),
+      date: getOnlyDateWithoutHours().toSQLDate()!,
       hasDiscount,
       url: productLink ?? '',
       available: true,

@@ -38,7 +38,7 @@ export async function updateProductFluctuations(): Promise<
         and(
           eq(latestPrices.rn, 1),
           eq(products.id, latestPrices.productId),
-          lt(latestPrices.lastUpdate, getOnlyDateWithoutHours()),
+          lt(latestPrices.lastUpdate, getOnlyDateWithoutHours().toSQLDate()!),
         ),
       )
       .leftJoin(supermarkets, eq(products.supermarketId, supermarkets.id))

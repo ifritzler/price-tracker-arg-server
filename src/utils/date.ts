@@ -1,17 +1,16 @@
-import { DateTime } from "luxon";
-
-export function getActualHourBuenosAires() {
-  const date = new Date();
-  const options = { timeZone: 'America/Argentina/Buenos_Aires' };
-  const localDateString = date.toLocaleString('en-US', options);
-  const localDate = new Date(localDateString);
-  return localDate;
-}
+import { DateTime } from 'luxon'
 
 export function getOnlyDateWithoutHours() {
   // Obtener la hora actual de Buenos Aires
   const desiredDate = DateTime.now()
-      .setZone('America/Argentina/Buenos_Aires')
-      .toSQLDate()
-  return desiredDate!;
+    .setZone('America/Argentina/Buenos_Aires')
+  return desiredDate!
+}
+
+export function isMorning() {
+  const currentHour = DateTime.now().setZone(
+    'America/Argentina/Buenos_Aires',
+  ).hour
+  console.log({currentHour})
+  return currentHour >= 0 && currentHour < 11
 }
