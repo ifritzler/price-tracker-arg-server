@@ -134,7 +134,7 @@ export async function getProducts(
       .where(
         and(
           eq(productsTable.available, true),
-          supId && supId !== ''
+          supId && supId !== '0' && supId !== ''
             ? eq(supermarketsTable.id, Number(supId))
             : undefined,
           p === 'true'
