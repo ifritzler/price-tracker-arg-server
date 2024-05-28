@@ -1,5 +1,10 @@
 import { Hono } from 'hono'
-import { getProducts, updateEanProducts } from '../../../services/products.js'
+import {
+  getProductById,
+  getProductMetricsById,
+  getProducts,
+  updateEanProducts,
+} from '../../../services/products.js'
 
 const productsRouter = new Hono()
 
@@ -43,6 +48,67 @@ productsRouter.get('', async (c) => {
     c.status(500)
     return c.json({ error: 'Internal server error' })
   }
+})
+
+productsRouter.get(':id', async (c) => {
+  const id = Number(c.req.param('id'))
+
+  if (isNaN(id)) {
+    return c.json(
+      {
+        success: false,
+        message: 'Product id must be a number',
+      },
+      400,
+    )
+  }
+
+  const product = await getProductById(id)
+  if (!product) {
+    return c.json(
+      {
+        success: false,
+        message: 'Product not found',
+      },
+      400,
+    )
+  }
+
+  return c.json({
+    success: true,
+    data: product,
+  })
+})
+
+productsRouter.get('/metrics/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  const { d } = c.req.query()
+
+  if (isNaN(id) || d && isNaN(Number(d))) {
+    return c.json(
+      {
+        success: false,
+        message: 'Bad request',
+      },
+      400,
+    )
+  }
+
+  const metrics = await getProductMetricsById(id, Number(d) ?? 7)
+  if (!metrics) {
+    return c.json(
+      {
+        success: false,
+        message: 'Metrics not found for product id: ' + id,
+      },
+      400,
+    )
+  }
+
+  return c.json({
+    success: true,
+    data: metrics,
+  })
 })
 
 productsRouter.put('update/ean', async (c) => {

@@ -1,13 +1,41 @@
-import { and, desc, eq, gt, ilike, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, ilike, or, sql } from 'drizzle-orm'
 import {
   categories as categoriesTable,
   productDailyPrices as productDailyPricesTable,
   products as productsTable,
   supermarkets as supermarketsTable,
 } from '../database/schema.js'
-import { getOnlyDateWithoutHours, isMorning, TimeEstimator } from '../utils/date.js'
+import {
+  getOnlyDateWithoutHours,
+  isMorning,
+  TimeEstimator,
+} from '../utils/date.js'
 import { db } from '../database/postgres.js'
-import { getProductDataCarrefour } from '../utils/carrefour/carrefour.js';
+import { getProductDataCarrefour } from '../utils/carrefour/carrefour.js'
+
+interface ProductBase {
+  id: number
+  title: string
+  url: string
+  imageUrl: string
+  categoryId: number
+  categoryName: string
+  supermarketId: number
+  supermarketName: string
+  available: boolean | null
+  ean: string | null
+}
+
+interface ProductMetric {
+  id: number
+  productId: number
+  hasDiscount: boolean
+  price: number
+  discountPrice: number
+  date: string
+  diffPercentage: number
+  minimunQuantity: number | null
+}
 
 export async function getProducts(
   filters: { p: string; inc: string; q: string },
@@ -33,8 +61,14 @@ export async function getProducts(
         dailyPrices: productDailyPricesTable,
       })
       .from(productsTable)
-      .innerJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
-      .innerJoin(supermarketsTable, eq(productsTable.supermarketId, supermarketsTable.id))
+      .innerJoin(
+        categoriesTable,
+        eq(productsTable.categoryId, categoriesTable.id),
+      )
+      .innerJoin(
+        supermarketsTable,
+        eq(productsTable.supermarketId, supermarketsTable.id),
+      )
       .innerJoin(
         productDailyPricesTable,
         and(
@@ -53,7 +87,9 @@ export async function getProducts(
       .where(
         and(
           eq(productsTable.available, true),
-          p === 'true' ? eq(productDailyPricesTable.hasDiscount, true) : undefined,
+          p === 'true'
+            ? eq(productDailyPricesTable.hasDiscount, true)
+            : undefined,
           inc === 'true'
             ? gt(productDailyPricesTable.diffPercentage, String(0.0))
             : undefined,
@@ -69,7 +105,9 @@ export async function getProducts(
       .offset(LIMIT_PRODUCTS_PER_PAGE * PAGE - LIMIT_PRODUCTS_PER_PAGE)
       .limit(LIMIT_PRODUCTS_PER_PAGE),
     db
-      .select({ count: sql<number>`cast(count(${productsTable.id}) as integer)` })
+      .select({
+        count: sql<number>`cast(count(${productsTable.id}) as integer)`,
+      })
       .from(productsTable)
       .innerJoin(
         productDailyPricesTable,
@@ -86,11 +124,16 @@ export async function getProducts(
               ),
         ),
       )
-      .innerJoin(supermarketsTable, eq(productsTable.supermarketId, supermarketsTable.id))
+      .innerJoin(
+        supermarketsTable,
+        eq(productsTable.supermarketId, supermarketsTable.id),
+      )
       .where(
         and(
           eq(productsTable.available, true),
-          p === 'true' ? eq(productDailyPricesTable.hasDiscount, true) : undefined,
+          p === 'true'
+            ? eq(productDailyPricesTable.hasDiscount, true)
+            : undefined,
           inc === 'true'
             ? gt(productDailyPricesTable.diffPercentage, String(0.0))
             : undefined,
@@ -105,24 +148,100 @@ export async function getProducts(
   ])
 }
 
-export async function updateEanProducts(){
+export async function getProductById(id: number): Promise<ProductBase | null> {
+  const queryResult: ProductBase[] | null = await db
+    .select({
+      id: productsTable.id,
+      title: productsTable.title,
+      url: productsTable.url,
+      imageUrl: productsTable.imageUrl,
+      categoryId: productsTable.categoryId,
+      categoryName: categoriesTable.name,
+      supermarketId: productsTable.supermarketId,
+      supermarketName: supermarketsTable.name,
+      available: productsTable.available,
+      ean: productsTable.ean,
+    })
+    .from(productsTable)
+    .innerJoin(
+      supermarketsTable,
+      eq(productsTable.supermarketId, supermarketsTable.id),
+    )
+    .innerJoin(
+      categoriesTable,
+      eq(categoriesTable.id, productsTable.categoryId),
+    )
+    .where(eq(productsTable.id, id))
+    .limit(1)
+
+  if (!queryResult.length) {
+    return null
+  }
+  return queryResult[0]
+}
+
+export async function getProductMetricsById(
+  id: number,
+  daysLimit?: number,
+): Promise<ProductMetric[] | null> {
+  const BASE_DAYS_LIMIT = 7
+  const queryResult = await db
+    .select({
+      date: productDailyPricesTable.date,
+      id: productDailyPricesTable.id,
+      productId: productDailyPricesTable.productId,
+      hasDiscount: productDailyPricesTable.hasDiscount,
+      price: sql<number>`CAST (${productDailyPricesTable.price} as integer)`.as(
+        'price',
+      ),
+      discountPrice:
+        sql<number>`CAST (${productDailyPricesTable.discountPrice} as integer)`.as(
+          'discountPrice',
+        ),
+      diffPercentage:
+        sql<number>`CAST (${productDailyPricesTable.diffPercentage} as integer)`.as(
+          'diffPercentage',
+        ),
+      minimunQuantity: productDailyPricesTable.minimunQuantity,
+    })
+    .from(productDailyPricesTable)
+    .where(eq(productDailyPricesTable.productId, id))
+    .orderBy(asc(productDailyPricesTable.date))
+    .limit(daysLimit ?? BASE_DAYS_LIMIT)
+
+  if (!queryResult) return null
+  if (queryResult.length === 0) return null
+
+  return queryResult
+}
+
+export async function getProductsByEAN(ean: string) {
+  return ean
+}
+
+export async function updateEanProducts() {
   const products = await db.select().from(productsTable)
   const steps = Math.ceil(products.length / 20)
   const timeEstimator = new TimeEstimator(steps)
 
-  for(let i = 0; i < steps; i++) {
+  for (let i = 0; i < steps; i++) {
     const slice = products.slice(i * 20, (i + 1) * 20)
     timeEstimator.startStep()
 
-    const newData = await Promise.all(slice.map(async product => {
-      const data = await getProductDataCarrefour(product.url);
-      return data
-    }))
+    const newData = await Promise.all(
+      slice.map(async (product) => {
+        const data = await getProductDataCarrefour(product.url)
+        return data
+      }),
+    )
 
-    for(let j = 0; j < newData.length; j++){
+    for (let j = 0; j < newData.length; j++) {
       const obj = newData[j]
-      if(obj) {
-        await db.update(productsTable).set({ean: obj.ean }).where(eq(productsTable.url, obj.url))
+      if (obj) {
+        await db
+          .update(productsTable)
+          .set({ ean: obj.ean })
+          .where(eq(productsTable.url, obj.url))
       }
     }
     timeEstimator.endStep()
