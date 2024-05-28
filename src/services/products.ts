@@ -216,7 +216,34 @@ export async function getProductMetricsById(
 }
 
 export async function getProductsByEAN(ean: string) {
-  return ean
+  const queryResult: ProductBase[] | null = await db
+    .select({
+      id: productsTable.id,
+      title: productsTable.title,
+      url: productsTable.url,
+      imageUrl: productsTable.imageUrl,
+      categoryId: productsTable.categoryId,
+      categoryName: categoriesTable.name,
+      supermarketId: productsTable.supermarketId,
+      supermarketName: supermarketsTable.name,
+      available: productsTable.available,
+      ean: productsTable.ean,
+    })
+    .from(productsTable)
+    .innerJoin(
+      supermarketsTable,
+      eq(productsTable.supermarketId, supermarketsTable.id),
+    )
+    .innerJoin(
+      categoriesTable,
+      eq(categoriesTable.id, productsTable.categoryId),
+    )
+    .where(eq(productsTable.ean, ean))
+
+  if (!queryResult.length) {
+    return null
+  }
+  return queryResult
 }
 
 export async function updateEanProducts() {

@@ -3,6 +3,7 @@ import {
   getProductById,
   getProductMetricsById,
   getProducts,
+  getProductsByEAN,
   updateEanProducts,
 } from '../../../services/products.js'
 
@@ -80,11 +81,32 @@ productsRouter.get(':id', async (c) => {
   })
 })
 
+productsRouter.get('/ean/:ean', async (c) => {
+  const ean = c.req.param('ean')
+
+  if (!ean) return c.notFound()
+  const product = await getProductsByEAN(ean)
+  if (!product) {
+    return c.json(
+      {
+        success: false,
+        message: 'Product not found',
+      },
+      404,
+    )
+  }
+
+  return c.json({
+    success: true,
+    data: product,
+  })
+})
+
 productsRouter.get('/metrics/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const { d } = c.req.query()
 
-  if (isNaN(id) || d && isNaN(Number(d))) {
+  if (isNaN(id) || (d && isNaN(Number(d)))) {
     return c.json(
       {
         success: false,
