@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { getProducts } from '../../../services/products.js'
+import { getProducts, updateEanProducts } from '../../../services/products.js'
 
 const productsRouter = new Hono()
 
@@ -45,5 +45,8 @@ productsRouter.get('', async (c) => {
   }
 })
 
+productsRouter.put('update/ean', async (c) => {
+  await updateEanProducts()
+  return c.json({ success: true })
+})
 export default productsRouter
-

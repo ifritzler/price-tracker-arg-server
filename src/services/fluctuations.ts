@@ -113,6 +113,7 @@ export async function updateProductFluctuations(): Promise<
               price: response.realPrice as number,
               discountPrice: response.discountPrice as number,
               date: response.date,
+              minimunQuantity: response.minimunQuantity
             }))
         } catch (error) {
           console.error(`Error into getProductData (${response}):`, error)

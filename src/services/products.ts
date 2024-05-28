@@ -1,12 +1,13 @@
 import { and, asc, eq, gt, ilike, or, sql } from 'drizzle-orm'
 import {
-  categories,
-  productDailyPrices,
-  products,
-  supermarkets,
+  categories as categoriesTable,
+  productDailyPrices as productDailyPricesTable,
+  products as productsTable,
+  supermarkets as supermarketsTable,
 } from '../database/schema.js'
-import { getOnlyDateWithoutHours, isMorning } from '../utils/date.js'
+import { getOnlyDateWithoutHours, isMorning, TimeEstimator } from '../utils/date.js'
 import { db } from '../database/postgres.js'
+import { getProductDataCarrefour } from '../utils/carrefour.js';
 
 export async function getProducts(
   filters: { p: string; inc: string; q: string },
@@ -17,89 +18,114 @@ export async function getProducts(
   return await Promise.all([
     db
       .select({
-        id: products.id,
-        title: products.title,
-        url: products.url,
-        imageUrl: products.imageUrl,
-        categoryId: products.categoryId,
-        supermarketId: products.supermarketId,
+        id: productsTable.id,
+        title: productsTable.title,
+        url: productsTable.url,
+        imageUrl: productsTable.imageUrl,
+        categoryId: productsTable.categoryId,
+        supermarketId: productsTable.supermarketId,
         category: {
-          name: categories.name,
+          name: categoriesTable.name,
         },
         supermarket: {
-          name: supermarkets.name,
+          name: supermarketsTable.name,
         },
-        dailyPrices: productDailyPrices,
+        dailyPrices: productDailyPricesTable,
       })
-      .from(products)
-      .innerJoin(categories, eq(products.categoryId, categories.id))
-      .innerJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
+      .from(productsTable)
+      .innerJoin(categoriesTable, eq(productsTable.categoryId, categoriesTable.id))
+      .innerJoin(supermarketsTable, eq(productsTable.supermarketId, supermarketsTable.id))
       .innerJoin(
-        productDailyPrices,
+        productDailyPricesTable,
         and(
-          eq(products.id, productDailyPrices.productId),
+          eq(productsTable.id, productDailyPricesTable.productId),
           isMorning()
             ? eq(
-                productDailyPrices.date,
+                productDailyPricesTable.date,
                 getOnlyDateWithoutHours().minus({ day: 1 }).toSQLDate()!,
               )
             : eq(
-                productDailyPrices.date,
+                productDailyPricesTable.date,
                 getOnlyDateWithoutHours().toSQLDate()!,
               ),
         ),
       )
       .where(
         and(
-          eq(products.available, true),
-          p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
+          eq(productsTable.available, true),
+          p === 'true' ? eq(productDailyPricesTable.hasDiscount, true) : undefined,
           inc === 'true'
-            ? gt(productDailyPrices.diffPercentage, String(0.0))
+            ? gt(productDailyPricesTable.diffPercentage, String(0.0))
             : undefined,
           q !== ''
             ? or(
-                ilike(products.title, `%${q}%`),
-                ilike(supermarkets.name, `%${q}%`),
+                ilike(productsTable.title, `%${q}%`),
+                ilike(supermarketsTable.name, `%${q}%`),
               )
             : undefined,
         ),
       )
-      .orderBy(asc(products.id))
+      .orderBy(asc(productsTable.id))
       .offset(LIMIT_PRODUCTS_PER_PAGE * PAGE - LIMIT_PRODUCTS_PER_PAGE)
       .limit(LIMIT_PRODUCTS_PER_PAGE),
     db
-      .select({ count: sql<number>`cast(count(${products.id}) as integer)` })
-      .from(products)
+      .select({ count: sql<number>`cast(count(${productsTable.id}) as integer)` })
+      .from(productsTable)
       .innerJoin(
-        productDailyPrices,
+        productDailyPricesTable,
         and(
-          eq(products.id, productDailyPrices.productId),
+          eq(productsTable.id, productDailyPricesTable.productId),
           isMorning()
             ? eq(
-                productDailyPrices.date,
+                productDailyPricesTable.date,
                 getOnlyDateWithoutHours().minus({ day: 1 }).toSQLDate()!,
               )
             : eq(
-                productDailyPrices.date,
+                productDailyPricesTable.date,
                 getOnlyDateWithoutHours().toSQLDate()!,
               ),
         ),
       )
-      .innerJoin(supermarkets, eq(products.supermarketId, supermarkets.id))
+      .innerJoin(supermarketsTable, eq(productsTable.supermarketId, supermarketsTable.id))
       .where(
         and(
-          eq(products.available, true),
-          p === 'true' ? eq(productDailyPrices.hasDiscount, true) : undefined,
+          eq(productsTable.available, true),
+          p === 'true' ? eq(productDailyPricesTable.hasDiscount, true) : undefined,
           inc === 'true'
-            ? gt(productDailyPrices.diffPercentage, String(0.0))
+            ? gt(productDailyPricesTable.diffPercentage, String(0.0))
             : undefined,
           q !== ''
             ? or(
-                ilike(products.title, `%${q}%`),
-                ilike(supermarkets.name, `%${q}%`),
+                ilike(productsTable.title, `%${q}%`),
+                ilike(supermarketsTable.name, `%${q}%`),
               )
             : undefined,
         ),
       ),
   ])
+}
+
+export async function updateEanProducts(){
+  const products = await db.select().from(productsTable)
+  const steps = Math.ceil(products.length / 20)
+  const timeEstimator = new TimeEstimator(steps)
+
+  for(let i = 0; i < steps; i++) {
+    const slice = products.slice(i * 20, (i + 1) * 20)
+    timeEstimator.startStep()
+
+    const newData = await Promise.all(slice.map(async product => {
+      const data = await getProductDataCarrefour(product.url);
+      return data
+    }))
+
+    for(let j = 0; j < newData.length; j++){
+      const obj = newData[j]
+      if(obj) {
+        await db.update(productsTable).set({ean: obj.ean }).where(eq(productsTable.url, obj.url))
+      }
+    }
+    timeEstimator.endStep()
+    timeEstimator.logEstimatedRemainingTime()
+  }
 }

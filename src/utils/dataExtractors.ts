@@ -25,7 +25,7 @@ export class JsonCarrefourReader {
   public getBarCode(): string | null {
     const bar = this.getNonPrefixedProp<string>('ean', 'items.0')
     if (!bar) return null
-    return bar[0]
+    return bar
   }
 
   public getImageUrl(): string | null {

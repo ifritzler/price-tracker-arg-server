@@ -36,6 +36,7 @@ export const products = pgTable('products', {
     })
     .notNull(),
   available: boolean('available').default(true),
+  ean: text('ean').unique()
 })
 
 export const productDailyPrices = pgTable('product_daily_prices', {
@@ -50,6 +51,7 @@ export const productDailyPrices = pgTable('product_daily_prices', {
   discountPrice: numeric('discount_price', { precision: 12, scale: 2 }).notNull(),
   date: date('date', { mode: 'string' }).notNull(),
   diffPercentage: numeric('diff_percentage', { precision: 12, scale: 2 }).notNull(),
+  minimunQuantity: integer('minimun_quantity')
 }, (t) => ({
   compositePk: primaryKey({columns: [t.date, t.productId], name: 'product_date_pk'}),
 }))

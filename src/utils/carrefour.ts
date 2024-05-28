@@ -37,7 +37,9 @@ export const getProductDataCarrefour = async (productLink: string) => {
     const realPrice = accessor.getPriceWithoutDiscount();
     const hasDiscount = accessor.hasDiscount().state;
     const discountPrice = accessor.getPrice();
-
+    const minimunQuantity = accessor.hasDiscount().minimumQuantity;
+    const ean = accessor.getBarCode();
+    
     return {
       title,
       category,
@@ -48,6 +50,8 @@ export const getProductDataCarrefour = async (productLink: string) => {
       hasDiscount,
       url: productLink ?? '',
       available,
+      minimunQuantity,
+      ean
     }
   } catch (e: Error | unknown) {
     console.error((e as Error).message)
