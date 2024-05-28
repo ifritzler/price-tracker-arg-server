@@ -18,7 +18,7 @@ productsRouter.get('', async (c) => {
      * 'p' is the param who looks the products with discount and the value can be only true or false
      */
     // eslint-disable-next-line prefer-const
-    let { p = 'false', inc = 'false', q = '', page = '1' } = c.req.query()
+    let { p = 'false', inc = 'false', q = '', page = '1', supId = '0' } = c.req.query()
     const LIMIT_PRODUCTS_PER_PAGE = 16
     const pageNumber = Number(page)
     const PAGE = isNaN(pageNumber) ? 1 : pageNumber
@@ -32,7 +32,7 @@ productsRouter.get('', async (c) => {
     }
 
     const [response, count] = await getProducts(
-      { p, inc, q },
+      { p, inc, q, supId },
       LIMIT_PRODUCTS_PER_PAGE,
       PAGE,
     )

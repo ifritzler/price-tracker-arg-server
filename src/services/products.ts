@@ -38,11 +38,11 @@ interface ProductMetric {
 }
 
 export async function getProducts(
-  filters: { p: string; inc: string; q: string },
+  filters: { p: string; inc: string; q: string; supId: string },
   LIMIT_PRODUCTS_PER_PAGE: number,
   PAGE: number,
 ) {
-  const { p, inc, q } = filters
+  const { p, inc, q, supId } = filters
   return await Promise.all([
     db
       .select({
@@ -87,6 +87,9 @@ export async function getProducts(
       .where(
         and(
           eq(productsTable.available, true),
+          supId && supId !== '0' && supId !== ''
+            ? eq(supermarketsTable.id, Number(supId))
+            : undefined,
           p === 'true'
             ? eq(productDailyPricesTable.hasDiscount, true)
             : undefined,
@@ -131,6 +134,9 @@ export async function getProducts(
       .where(
         and(
           eq(productsTable.available, true),
+          supId && supId !== ''
+            ? eq(supermarketsTable.id, Number(supId))
+            : undefined,
           p === 'true'
             ? eq(productDailyPricesTable.hasDiscount, true)
             : undefined,
