@@ -1,5 +1,5 @@
 import htmlParser from 'node-html-parser'
-import { getOnlyDateWithoutHours } from './date.js'
+import { getOnlyDateWithoutHours } from '../date.js'
 import { JsonCarrefourReader } from './dataExtractors.js'
 
 const fetchProductHtml = async (productLink: string) => {

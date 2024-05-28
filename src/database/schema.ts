@@ -36,7 +36,7 @@ export const products = pgTable('products', {
     })
     .notNull(),
   available: boolean('available').default(true),
-  ean: text('ean').unique()
+  ean: text('ean')
 })
 
 export const productDailyPrices = pgTable('product_daily_prices', {

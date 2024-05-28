@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, ilike, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, ilike, or, sql } from 'drizzle-orm'
 import {
   categories as categoriesTable,
   productDailyPrices as productDailyPricesTable,
@@ -7,7 +7,7 @@ import {
 } from '../database/schema.js'
 import { getOnlyDateWithoutHours, isMorning, TimeEstimator } from '../utils/date.js'
 import { db } from '../database/postgres.js'
-import { getProductDataCarrefour } from '../utils/carrefour.js';
+import { getProductDataCarrefour } from '../utils/carrefour/carrefour.js';
 
 export async function getProducts(
   filters: { p: string; inc: string; q: string },
@@ -65,7 +65,7 @@ export async function getProducts(
             : undefined,
         ),
       )
-      .orderBy(asc(productsTable.id))
+      .orderBy(desc(productsTable.ean))
       .offset(LIMIT_PRODUCTS_PER_PAGE * PAGE - LIMIT_PRODUCTS_PER_PAGE)
       .limit(LIMIT_PRODUCTS_PER_PAGE),
     db

@@ -5,9 +5,10 @@ import {
   products,
   supermarkets,
 } from '../database/schema.js'
-import { getProductDataCarrefour } from '../utils/carrefour.js'
+import { getProductDataCarrefour } from '../utils/carrefour/carrefour.js'
 import { STOP_INSERTIONS } from '../utils/constants.js'
-import { getOnlyDateWithoutHours } from '../utils/date.js'
+import { getOnlyDateWithoutHours, TimeEstimator } from '../utils/date.js'
+import { getProductDataVea } from '../utils/vea/vea.js'
 
 type SqlQueryRawType = {
   prod_id: number
@@ -60,15 +61,21 @@ export async function updateProductFluctuations(): Promise<
     // Actualiza los productos en lotes de 10
     const batchSize = 20
     const batches = Math.ceil(productsToUpdate.length / batchSize)
-    console.info('Total Batches: ' + batches)
+    const estimator = new TimeEstimator(batches)
     for (let i = 0; i < batches; i++) {
-      console.info('Batch n°: ' + i)
+      estimator.startStep()
       const batch = productsToUpdate.slice(i * batchSize, (i + 1) * batchSize)
 
       const batchData = await Promise.all(
         batch.map(async (row: SqlQueryRawType) => {
           try {
-            const result = await getProductDataCarrefour(row.url)
+            let result
+
+            if (row.supermarket_name === 'carrefour')
+              result = await getProductDataCarrefour(row.url)
+            if (row.supermarket_name === 'vea')
+              result = await getProductDataVea(row.url)
+
             if (!result) return result
             return {
               ...result,
@@ -113,12 +120,14 @@ export async function updateProductFluctuations(): Promise<
               price: response.realPrice as number,
               discountPrice: response.discountPrice as number,
               date: response.date,
-              minimunQuantity: response.minimunQuantity
+              minimunQuantity: response.minimunQuantity,
             }))
         } catch (error) {
           console.error(`Error into getProductData (${response}):`, error)
         }
       }
+      estimator.endStep()
+      estimator.logEstimatedRemainingTime()
     }
 
     return { message: 'Product updates finished' }

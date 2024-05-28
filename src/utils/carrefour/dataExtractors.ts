@@ -29,7 +29,10 @@ export class JsonCarrefourReader {
   }
 
   public getImageUrl(): string | null {
-    const imagePropId = this.getNonPrefixedProp<string>('images.id', 'items.0')
+    const images = this.getNonPrefixedProp<Array<Record<string, any>>>('images', 'items.0')
+    const image = images![0] as Record<string, any>
+
+    const imagePropId = image.id
     if (!imagePropId) return null
 
     const imageUrl = (this.jsonObject[imagePropId] as any).imageUrl
@@ -107,7 +110,7 @@ export class JsonCarrefourReader {
     )
     if (!availableQuantity) return false
 
-    return availableQuantity > 200
+    return availableQuantity > 0
   }
 
   public hasDiscount(): { state: boolean; minimumQuantity: number } {
