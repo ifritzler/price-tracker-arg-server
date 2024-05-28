@@ -1,7 +1,7 @@
 {
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "plugins": ["@typescript-eslint", "drizzle"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:drizzle/recommended"],
   "rules": {
     // Agrega reglas personalizadas según tu preferencia
     "@typescript-eslint/no-explicit-any": "warn"

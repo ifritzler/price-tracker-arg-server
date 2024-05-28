@@ -1,108 +1,53 @@
-import htmlParser, { HTMLElement } from 'node-html-parser'
+import htmlParser from 'node-html-parser'
 import { getOnlyDateWithoutHours } from './date.js'
+import { JsonCarrefourReader } from './dataExtractors.js'
 
 const fetchProductHtml = async (productLink: string) => {
   if (!productLink) {
     throw new Error('Request error, some params id missing.')
   }
   const response = await fetch(productLink ?? '')
-  if(response.status === 404) throw new Error('El Producto ya no existe')
+  if (response.status === 404) throw new Error('El Producto ya no existe')
   return await response.text()
-}
-
-const extractPriceCarrefour = (priceContainer: any) => {
-  const priceWithoutDecimals = priceContainer
-    ?.querySelectorAll('.valtech-carrefourar-product-price-0-x-currencyInteger')
-    .map((elem: any) => elem.innerText)
-    .join('')
-  const priceDecimals = priceContainer?.querySelector(
-    '.valtech-carrefourar-product-price-0-x-currencyFraction',
-  )?.innerText
-  return parseFloat(priceWithoutDecimals?.concat('.', priceDecimals ?? ''))
-}
-
-const extractCategory = (parsed: any) => {
-  return parsed?.querySelector(
-    'span.vtex-breadcrumb-1-x-arrow.vtex-breadcrumb-1-x-arrow--breadcrumb-products.vtex-breadcrumb-1-x-arrow--1.vtex-breadcrumb-1-x-arrow--breadcrumb-products--1.ph2.c-muted-2',
-  )?.childNodes[1].innerText
-}
-
-const isAvailable = (parsed: any) => {
-  const priceContainer = parsed?.querySelector(
-    'div.vtex-flex-layout-0-x-flexCol.vtex-flex-layout-0-x-flexCol--product-view-prices-container',
-  )
-  //priceContainer has two childs?
-  const childPrices = {
-    child1: priceContainer?.childNodes[0].childNodes.length,
-    child2: priceContainer?.childNodes[1].childNodes.length,
-  }
-  if (childPrices.child1 === 0 && childPrices.child2 === 0) return false
-  return true
-}
-
-const extractdiscountPriceCarrefour = (parsed: any) => {
-  const priceWithoutDecimals = parsed
-    ?.querySelectorAll('.valtech-carrefourar-product-price-0-x-currencyInteger')
-    .map((elem: HTMLElement) => elem.innerText)
-    .join('')
-  if (parsed) {
-    // const sellingPriceWithoutDecimals = sellingPriceContainer?.querySelector('.valtech-carrefourar-product-price-0-x-currencyInteger')?.innerText;
-    const sellingPriceDecimals = parsed?.querySelector(
-      '.valtech-carrefourar-product-price-0-x-currencyFraction',
-    )?.innerText
-    return parseFloat(
-      priceWithoutDecimals?.concat('.', sellingPriceDecimals ?? ''),
-    )
-  }
-  return null
 }
 
 export const getProductDataCarrefour = async (productLink: string) => {
   try {
     const html = await fetchProductHtml(productLink)
     const parsed = htmlParser.parse(html)
-    const available = isAvailable(parsed)
-    if (!available)
-      return {
-        url: productLink,
-        available: false,
-      }
-
-    const category = extractCategory(parsed)
-    const title =
-      parsed?.querySelector('.vtex-store-components-3-x-productBrand')
-        ?.innerText ?? ''
-    const imageElement = parsed?.querySelector(
-      '.vtex-store-components-3-x-productImageTag.vtex-store-components-3-x-productImageTag--product-view-images-selector.vtex-store-components-3-x-productImageTag--main.vtex-store-components-3-x-productImageTag--product-view-images-selector--main',
+    const template = parsed.querySelector(
+      'template[data-type="json"][data-varname="__STATE__"]',
     )
-    const imageSrc = imageElement?.getAttribute('src') ?? ''
+    let accessor = null
 
-    const priceContainer: HTMLElement | null =
-      parsed?.querySelector(
-        '.vtex-flex-layout-0-x-flexCol.vtex-flex-layout-0-x-flexCol--product-view-prices-container',
-      ) ??
-      parsed?.querySelector(
-        'div.vtex-flex-layout-0-x-flexCol.vtex-flex-layout-0-x-flexCol--product-view-prices-container',
-      )
-    // Si el segundo child de este elemento esta vacio significa que no esta de promo el producto
+    if (template) {
+      const scriptTag = template.querySelector('script')
+      if (scriptTag) {
+        const jsonContent = scriptTag.text
+        accessor = new JsonCarrefourReader(jsonContent)
+      }
+    }
 
-    const hasDiscount = Boolean(priceContainer?.childNodes[1].innerText !== '')
-    const realPrice = hasDiscount
-      ? extractPriceCarrefour(priceContainer?.childNodes[1])
-      : extractPriceCarrefour(priceContainer?.childNodes[0])
-    const discountPrice = !hasDiscount
-      ? realPrice
-      : extractdiscountPriceCarrefour(priceContainer?.childNodes[0])
+    if(!accessor) return null
+
+    const available = accessor.isAvailable()
+    const category = accessor.getCategory();
+    const title = accessor.getProductName();
+    const imageUrl = accessor.getImageUrl();
+    const realPrice = accessor.getPriceWithoutDiscount();
+    const hasDiscount = accessor.hasDiscount().state;
+    const discountPrice = accessor.getPrice();
+
     return {
       title,
       category,
       realPrice,
       discountPrice,
-      imageUrl: imageSrc,
+      imageUrl,
       date: getOnlyDateWithoutHours().toSQLDate()!,
       hasDiscount,
       url: productLink ?? '',
-      available: true,
+      available,
     }
   } catch (e: Error | unknown) {
     console.error((e as Error).message)
