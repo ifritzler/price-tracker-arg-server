@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, ilike, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, ilike, or, sql } from 'drizzle-orm'
 import {
   categories as categoriesTable,
   productDailyPrices as productDailyPricesTable,
@@ -212,7 +212,6 @@ export async function getProductMetricsById(
     })
     .from(productDailyPricesTable)
     .where(eq(productDailyPricesTable.productId, id))
-    .orderBy(asc(productDailyPricesTable.date))
     .limit(daysLimit ?? BASE_DAYS_LIMIT)
 
   if (!queryResult) return null
